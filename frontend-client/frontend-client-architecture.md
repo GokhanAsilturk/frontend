@@ -4,16 +4,12 @@
 
 **Teknoloji Stack:**
 - React.js 18+
+- Typescript
 - Context API (State Management)
 - Material UI 5+ (UI Framework)
 - Axios (HTTP Client)
 - React Router v6 (Routing)
 
-**Backend Endpoint'leri:**
-- Auth: `/api/auth/student/login`, `/api/auth/logout`, `/api/auth/refresh-token`
-- Students: `GET/PUT /api/students/:id`, `PUT /api/students/profile`
-- Courses: `GET /api/courses`, `GET /api/courses/:id`
-- Enrollments: `GET /api/enrollments/students/:id`, `POST /api/enrollments/student/courses/:courseId/enroll`, `DELETE /api/enrollments/student/courses/:courseId/withdraw`
 
 **Öğrenci Özellikleri:**
 - Derslere kayıt olabilir/çıkış yapabilir

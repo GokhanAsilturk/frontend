@@ -32,10 +32,18 @@ const CourseDetail: React.FC = () => {
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
 
   const enrolled = course ? isEnrolled(course.id) : false;
-
   useEffect(() => {
     if (id) {
-      getCourseById(id);
+      // Kurs verisini yüklemek için timeout ekleyelim
+      const loadCourse = async () => {
+        try {
+          await getCourseById(id);
+        } catch (error) {
+          console.error("Kurs yükleme hatası:", error);
+        }
+      };
+      
+      loadCourse();
     }
   }, [id, getCourseById]);
 
@@ -78,9 +86,25 @@ const CourseDetail: React.FC = () => {
   const enrollmentState: EnrollmentState = {
     status: 'not_enrolled',
   };
-
+  // Yükleme durumunu daha detaylı göster
   if (courseLoading) {
-    return <LoadingSpinner fullScreen message="Kurs bilgileri yükleniyor..." />;
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+          <LoadingSpinner message="Kurs bilgileri yükleniyor..." />
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Bu işlem biraz zaman alabilir. Lütfen bekleyin...
+          </Typography>
+          <Button 
+            variant="outlined" 
+            sx={{ mt: 2 }} 
+            onClick={handleBackClick}
+          >
+            Kurslara Dön
+          </Button>
+        </Paper>
+      </Container>
+    );
   }
 
   if (courseError) {

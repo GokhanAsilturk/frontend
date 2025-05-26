@@ -22,8 +22,13 @@ import { Course } from '../types';
 
 /**
  * Courses sayfası - tüm dersleri listeler ve filtreleme imkanı sunar
+ * isEnrolledView prop'u sayesinde sadece kayıtlı dersleri de gösterebilir
  */
-function Courses() {
+interface CoursesProps {
+  isEnrolledView?: boolean;
+}
+
+function Courses({ isEnrolledView = false }: CoursesProps) {
   const { state: { courses, loading, error }, fetchCourses } = useCourse();
   const { enrollments, enrollCourse, withdrawCourse } = useEnrollments();
   const navigate = useNavigate();
@@ -75,14 +80,33 @@ function Courses() {
       );
     }
 
+    // Sadece kayıtlı dersler görünüyorsa, kayıtlı derslerle filtrele
+    if (isEnrolledView && Array.isArray(enrollments)) {
+      filtered = filtered.filter(course => 
+        enrollments.some(enrollment => {
+          // Hem doğrudan courseId hem de nested course objesi kontrolü
+          return enrollment.courseId === course.id || 
+                (enrollment.course && enrollment.course.id === course.id);
+        })
+      );
+      console.log('Filtrelenmiş kayıtlı dersler:', filtered);
+    }
+
     setFilteredCourses(filtered);
     setCurrentPage(1); // Filtreleme sonrası ilk sayfaya dön
-  }, [courses, searchTerm]);
+  }, [courses, searchTerm, isEnrolledView, enrollments]);
 
   /**
    * Kayıtlı derslerin ID'lerini al
    */
-  const enrolledCourseIds = Array.isArray(enrollments) ? enrollments.map(e => e.courseId) : [];
+  const enrolledCourseIds = Array.isArray(enrollments) ? 
+    enrollments.map(e => e.courseId || (e.course && e.course.id)).filter(Boolean) : [];
+    
+  // Debug için kayıt durumunu logla
+  console.log('Derslerim sayfası - Kayıt bilgileri:', {
+    enrollments,
+    enrolledCourseIds
+  });
 
   /**
    * Derse kayıt ol
@@ -91,6 +115,12 @@ function Courses() {
     try {
       setEnrollingCourseId(courseId);
       await enrollCourse(courseId);
+      
+      // Derse kaydolunca UI'daki kayıt durumunu güncellemek için zorunlu olarak
+      // kayıtlı dersleri yeniden çekelim
+      // await fetchEnrolledCourses();
+      
+      console.log(`${courseId} dersine başarıyla kaydolundu`);
     } catch (error) {
       console.error('Kayıt hatası:', error);
     } finally {
@@ -151,7 +181,7 @@ function Courses() {
     <Box sx={{ p: 3 }}>
       {/* Başlık */}
       <Typography variant="h4" gutterBottom>
-        Tüm Dersler
+        {isEnrolledView ? 'Derslerim' : 'Tüm Dersler'}
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         {filteredCourses.length} ders bulundu
@@ -239,11 +269,26 @@ function Courses() {
       ) : (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" gutterBottom>
-            Ders Bulunamadı
+            {isEnrolledView 
+              ? 'Kayıtlı Ders Bulunamadı' 
+              : 'Ders Bulunamadı'
+            }
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Arama kriterlerinize uygun ders bulunamadı. Filtreleri değiştirmeyi deneyin.
+            {isEnrolledView
+              ? 'Henüz hiçbir derse kayıt olmadınız. Dersler sayfasından ders kaydı yapabilirsiniz.'
+              : 'Arama kriterlerinize uygun ders bulunamadı. Filtreleri değiştirmeyi deneyin.'
+            }
           </Typography>
+          {isEnrolledView && (
+            <Button 
+              variant="contained" 
+              sx={{ mt: 2 }}
+              onClick={() => navigate('/courses')}
+            >
+              Tüm Dersleri Görüntüle
+            </Button>
+          )}
         </Paper>
       )}
     </Box>

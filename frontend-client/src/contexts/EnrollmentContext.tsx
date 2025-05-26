@@ -71,30 +71,63 @@ export const EnrollmentProvider: React.FC<EnrollmentProviderProps> = ({ children
   const [state, dispatch] = useReducer(enrollmentReducer, initialState);
   const { student } = useAuth();
   const { showNotification } = useNotification();
-
   const fetchEnrolledCourses = async () => {
     if (!student?.id) return;
     
     dispatch({ type: 'FETCH_REQUEST' });
     try {
       const response = await enrollmentService.getStudentEnrollments(student.id);
-      dispatch({ type: 'FETCH_SUCCESS', payload: response.data });
+      
+      // API yanıt formatını kontrol et ve doğru şekilde işle
+      console.log('API Enrollment Response:', response); // Debug için loglama
+      
+      let enrollments: Enrollment[] = [];
+      if (response && response.data) {
+        // Eğer paginated bir yanıt ise (success ve data içeren bir nesne)
+        if (typeof response.data === 'object' && 'data' in response.data) {
+          // type-safe şekilde işleyelim
+          const apiResponseObj = response.data as unknown as { data: unknown };
+          if (apiResponseObj.data && Array.isArray(apiResponseObj.data)) {
+            enrollments = apiResponseObj.data as Enrollment[];
+          }
+        } 
+        // Doğrudan array ise
+        else if (Array.isArray(response.data)) {
+          enrollments = response.data;
+        }
+      }
+      
+      console.log('İşlenen kayıtlar:', enrollments); // Debug için işlenen enrollments
+      dispatch({ type: 'FETCH_SUCCESS', payload: enrollments });
     } catch (error) {
+      console.error('Error fetching enrollments:', error); // Debug için loglama
       const errorMessage = error instanceof Error ? error.message : 'Kayıtlar yüklenirken hata oluştu';
       dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
   };
 
-  const enrollCourse = async (courseId: string) => {
+  const enrollCourse = async (courseId: string): Promise<void> => {
     dispatch({ type: 'ENROLL_REQUEST' });
     try {
       const response = await enrollmentService.enrollCourse(courseId);
-      dispatch({ type: 'ENROLL_SUCCESS', payload: response.data });
+      
+      console.log('Enroll Response:', response); // Debug için loglama
+      
+      // API yanıtını doğru şekilde işle
+      let enrollmentData: Enrollment;
+      if (response && response.data) {
+        enrollmentData = response.data;
+      } else {
+        throw new Error('Invalid enrollment response');
+      }
+      
+      dispatch({ type: 'ENROLL_SUCCESS', payload: enrollmentData });
       
       if (showNotification) {
         showNotification('Derse başarıyla kayıt oldunuz', 'success');
       }
       
+      // Make sure we always fetch the latest enrollment data after enrolling
       await fetchEnrolledCourses();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Kayıt olurken hata oluştu';
@@ -108,7 +141,7 @@ export const EnrollmentProvider: React.FC<EnrollmentProviderProps> = ({ children
     }
   };
 
-  const withdrawCourse = async (courseId: string) => {
+  const withdrawCourse = async (courseId: string): Promise<void> => {
     dispatch({ type: 'WITHDRAW_REQUEST' });
     try {
       await enrollmentService.withdrawCourse(courseId);
@@ -118,6 +151,7 @@ export const EnrollmentProvider: React.FC<EnrollmentProviderProps> = ({ children
         showNotification('Ders kaydınız başarıyla silindi', 'success');
       }
       
+      // Make sure we always fetch the latest enrollment data after withdrawing
       await fetchEnrolledCourses();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Kayıt silinirken hata oluştu';
@@ -135,8 +169,20 @@ export const EnrollmentProvider: React.FC<EnrollmentProviderProps> = ({ children
     if (student?.id) {
       fetchEnrolledCourses();
     }
-  }, [student?.id]);  const isEnrolled = useCallback((courseId: string) => {
-    return state.enrollments.some(enrollment => enrollment.courseId === courseId);
+  }, [student?.id]);
+    const isEnrolled = useCallback((courseId: string) => {
+    if (!state.enrollments || state.enrollments.length === 0) return false;
+    
+    // Her iki olası kayıt formatını da kontrol et
+    return state.enrollments.some(enrollment => {
+      // Doğrudan courseId varsa
+      if (enrollment.courseId === courseId) return true;
+      
+      // Veya nested course objesi varsa
+      if (enrollment.course && enrollment.course.id === courseId) return true;
+      
+      return false;
+    });
   }, [state.enrollments]);
 
   const value = useMemo(() => ({

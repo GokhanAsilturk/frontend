@@ -77,23 +77,19 @@ const AppRouter: React.FC = () => {
         }
       >
         {/* Dashboard - Ana sayfa */}
-        <Route index element={<Dashboard />} />
-          {/* Dersler sayfası */}
-        <Route path="courses" element={<Courses />} />
+        <Route index element={<Dashboard />} />        {/* Dersler sayfası */}
+        <Route path="courses" element={<Courses isEnrolledView={false} />} />
         
         {/* Ders detay sayfası */}
         <Route path="courses/:id" element={<CourseDetail />} />
-        
-        {/* Profil sayfası */}
+          {/* Profil sayfası */}
         <Route path="profile" element={<Profile />} />
         
-        {/* Gelecekte eklenecek rotalar için placeholder */}
-        <Route path="enrollments" element={
-          <div style={{ padding: '20px' }}>
-            <h2>Kayıtlarım</h2>
-            <p>Bu sayfa yakında eklenecek.</p>
-          </div>
-        } />
+        {/* Kayıtlı dersler sayfası */}
+        <Route path="enrolled-courses" element={<Courses isEnrolledView={true} />} />
+        
+        {/* Eski path için yönlendirme */}
+        <Route path="enrollments" element={<Navigate to="/enrolled-courses" replace />} />
         
         <Route path="assignments" element={
           <div style={{ padding: '20px' }}>

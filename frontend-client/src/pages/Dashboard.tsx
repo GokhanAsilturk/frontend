@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -34,6 +35,7 @@ import { Course, Enrollment } from '../types';
  * Kayıtlı dersler, istatistikler ve yaklaşan etkinlikleri gösterir
  */
 function Dashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { state: { courses, loading, error }, fetchCourses } = useCourse();
   const { enrollments, loading: enrollmentsLoading, fetchEnrolledCourses } = useEnrollments();
@@ -217,10 +219,13 @@ function Dashboard() {
         {/* Son Kayıtlı Dersler */}
         <Grid item xs={12} md={8}>
           <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <CardContent>              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Son Kayıtlı Derslerim</Typography>
-                <Button variant="outlined" size="small">
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => navigate('/enrolled-courses')}
+                >
                   Tümünü Gör
                 </Button>
               </Box>
@@ -238,11 +243,14 @@ function Dashboard() {
                 </Grid>
               ) : (
                 <Box sx={{ textAlign: 'center', py: 4 }}>
-                  <BookmarkIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary">
+                  <BookmarkIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />                  <Typography variant="body1" color="text.secondary">
                     Henüz hiçbir derse kayıt olmadınız.
                   </Typography>
-                  <Button variant="contained" sx={{ mt: 2 }}>
+                  <Button 
+                    variant="contained" 
+                    sx={{ mt: 2 }}
+                    onClick={() => navigate('/courses')}
+                  >
                     Dersleri Keşfet
                   </Button>
                 </Box>

@@ -186,22 +186,37 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         payload: error instanceof Error ? error.message : 'Kurslar yüklenirken hata oluştu',
       });
     }
-  }, [state.pagination.page, state.pagination.limit, state.searchTerm]);
-
-  // Get course by ID
+  }, [state.pagination.page, state.pagination.limit, state.searchTerm]);  // Get course by ID
   const getCourseById = useCallback(async (id: string) => {
     try {
       dispatch({ type: 'FETCH_COURSES_REQUEST' });
       
       const response = await courseService.getCourseById(id);
-      const courseData = extractCourseData(response.data);
+      console.log('Kurs detayı API yanıtı:', response); // Debug için loglama
+      
+      // API yanıt yapısını kontrol et
+      let courseData: Course | null = null;
+      
+      if (response && response.data) {
+        // Direkt Course objesi ise (id özelliği varsa)
+        if (response.data.id) {
+          courseData = response.data as Course;
+        } 
+        // Özel extraction fonksiyonu ile deneyelim
+        else {
+          courseData = extractCourseData(response.data);
+        }
+      }
       
       if (courseData) {
+        console.log('İşlenen kurs verisi:', courseData); // Debug için loglama
         dispatch({ type: 'SET_CURRENT_COURSE', payload: courseData });
       } else {
-        throw new Error('Kurs bilgisi bulunamadı');
+        console.error('Kurs verisi bulunamadı veya işlenemedi'); // Debug için loglama
+        dispatch({ type: 'FETCH_COURSES_FAILURE', payload: 'Kurs bilgisi bulunamadı' });
       }
     } catch (error) {
+      console.error('Kurs detayı yükleme hatası:', error); // Debug için loglama
       dispatch({
         type: 'FETCH_COURSES_FAILURE',
         payload: error instanceof Error ? error.message : 'Kurs bilgileri yüklenirken hata oluştu',

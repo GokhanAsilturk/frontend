@@ -117,8 +117,8 @@ function Login() {  const navigate = useNavigate();
    */
   const handleDemoLogin = () => {
     setFormData({
-      username: 'democustomer',
-      password: 'demo123'
+      username: 'gokhanasilturk',
+      password: 'Student123!'
     });
   };
 
@@ -252,12 +252,6 @@ function Login() {  const navigate = useNavigate();
               </Link>
             </Typography>
             
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Hesabınız yok mu?{' '}
-              <Link href="#" underline="hover">
-                Kayıt Ol
-              </Link>
-            </Typography>
           </Box>
         </CardContent>
       </Card>

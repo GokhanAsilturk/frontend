@@ -46,11 +46,16 @@ const CourseCard: React.FC<CourseCardProps> = ({
     action: null
   });
   const [error, setError] = useState('');
-
   // Use prop isEnrolled if provided, otherwise calculate from enrollments
-  const isEnrolled = propIsEnrolled ?? enrollments.some(
-    (enrollment) => enrollment.course?.id === course.id || enrollment.courseId === course.id
+  const isEnrolled = propIsEnrolled !== undefined ? propIsEnrolled : enrollments.some(
+    (enrollment) => {
+      // Hem doğrudan courseId'yi hem de nested course objesini kontrol et
+      return enrollment.courseId === course.id || 
+             (enrollment.course && enrollment.course.id === course.id);
+    }
   );
+  
+  console.log(`Kurs: ${course.name}, Kayıtlı mı: ${isEnrolled}`, { courseId: course.id, enrollments });
 
 
   const handleViewDetails = () => {

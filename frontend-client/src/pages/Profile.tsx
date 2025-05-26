@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -37,8 +38,9 @@ import { User } from '../types';
  * Profile sayfası - kullanıcının profil bilgilerini görüntüler ve düzenleme imkanı sunar
  */
 function Profile() {
+  const navigate = useNavigate();
   const { user, loading: authLoading, error: authError, updateProfile } = useAuth();
-  const { enrollments, loading: enrollmentsLoading, fetchEnrolledCourses } = useEnrollments(); // EnrollmentProvider() -> useEnrollments
+  const { enrollments, loading: enrollmentsLoading, fetchEnrolledCourses, withdrawCourse } = useEnrollments(); // Added withdrawCourse
   const { state: { courses } } = useCourse();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -432,7 +434,23 @@ function Profile() {
                 
                 <List dense>
                   {enrolledCourses.slice(0, 3).map((course) => (
-                    <ListItem key={course.id}>
+                    <ListItem 
+                      key={course.id} 
+                      secondaryAction={
+                        <Button 
+                          size="small" 
+                          color="error" 
+                          variant="outlined"
+                          onClick={() => {
+                            if (window.confirm(`${course.name} dersinden kaydınızı silmek istediğinizden emin misiniz?`)) {
+                              withdrawCourse(course.id);
+                            }
+                          }}
+                        >
+                          Sil
+                        </Button>
+                      }
+                    >
                       <ListItemText
                         primary={course.name}
                         secondary={(() => {
@@ -447,7 +465,11 @@ function Profile() {
                 </List>
                 
                 {enrolledCourses.length > 3 && (
-                  <Button size="small" fullWidth>
+                  <Button 
+                    size="small" 
+                    fullWidth
+                    onClick={() => navigate('/enrolled-courses')}
+                  >
                     Tümünü Gör ({enrolledCourses.length})
                   </Button>
                 )}
