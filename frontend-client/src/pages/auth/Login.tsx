@@ -90,9 +90,6 @@ function Login() {  const navigate = useNavigate();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Login attempt with:', { username: formData.username, password: '***' });
-    console.log('API Base URL:', process.env.REACT_APP_API_URL);
-    
     if (!validateForm()) {
       return;
     }
@@ -102,11 +99,7 @@ function Login() {  const navigate = useNavigate();
       setError('');
       
       await login({ username: formData.username, password: formData.password });
-      console.log('Login successful');
-      
-      // Başarılı giriş sonrası yönlendirme useEffect'te yapılacak
     } catch (error: any) {
-      console.error('Login error:', error);
       setError(error.message ?? 'Giriş yapılırken bir hata oluştu.');
     } finally {
       setIsSubmitting(false);

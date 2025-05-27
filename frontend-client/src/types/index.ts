@@ -1,17 +1,11 @@
-/**
- * Backend API'sinden gelen User tipi
- */
 export interface User {
-  id: string;      // student id
-  userId: string;  // user id
+  id: string;
+  userId: string;
   username: string;
   email: string;
   role: 'student' | 'admin';
 }
 
-/**
- * Backend API'sinden gelen Student tipi
- */
 export interface Student {
   id: string;
   studentId: string;
@@ -22,9 +16,6 @@ export interface Student {
   updatedAt: string;
 }
 
-/**
- * Backend API'sinden gelen Course tipi
- */
 export interface Course {
   id: string;
   name: string;
@@ -36,9 +27,6 @@ export interface Course {
   updatedAt: string;
 }
 
-/**
- * Backend API'sinden gelen Enrollment tipi
- */
 export interface Enrollment {
   id: string;
   studentId: string;
@@ -48,9 +36,6 @@ export interface Enrollment {
   updatedAt: string;
 }
 
-/**
- * API yanıt tipi - Backend'den gelen format
- */
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -58,9 +43,6 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-/**
- * Sayfalama yanıtı tipi - Backend'den gelen format
- */
 export interface PaginatedResponse<T> {
   success: boolean;
   data: T[];
@@ -72,76 +54,49 @@ export interface PaginatedResponse<T> {
   };
 }
 
-/**
- * Giriş isteği tipi
- */
 export interface LoginRequest {
-  username: string; // Backend email değil username kullanıyor
+  username: string;
   password: string;
 }
 
-/**
- * Giriş yanıtı tipi - Backend'den gelen format
- */
 export interface LoginResponse {
   user: User & { userId?: string };
   accessToken: string;
   refreshToken: string;
 }
 
-/**
- * Student profil güncelleme isteği tipi
- */
 export interface UpdateStudentProfileRequest {
   firstName: string;
   lastName: string;
-  birthDate: string; // YYYY-MM-DD format
+  birthDate: string;
 }
 
-/**
- * Sayfalama parametreleri
- */
 export interface PaginationParams {
   page?: number;
   limit?: number;
   search?: string;
 }
 
-/**
- * Hata tipi
- */
 export interface AppError {
   message: string;
   code?: string;
   status?: number;
 }
 
-/**
- * Loading state tipi
- */
 export interface LoadingState {
   [key: string]: boolean;
 }
 
-/**
- * Form validation tipi
- */
 export interface ValidationError {
   field: string;
   message: string;
 }
 
-/**
- * Giriş bilgileri tipi
- */
 export interface LoginCredentials {
   username: string;
   password: string;
 }
 
-/**
- * Auth Context State tipi
- */
 export interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
@@ -150,9 +105,6 @@ export interface AuthState {
   error: string | null;
 }
 
-/**
- * Auth Context tipi
- */
 export interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
@@ -164,9 +116,6 @@ export interface AuthContextType {
   updateProfile: (data: Partial<User>) => void;
 }
 
-/**
- * Course Context tipi
- */
 export interface CourseContextType {
   courses: Course[];
   currentCourse: Course | null;
@@ -186,9 +135,6 @@ export interface CourseContextType {
   clearError: () => void;
 }
 
-/**
- * Enrollment Context tipi
- */
 export interface EnrollmentContextType {
   enrollments: Enrollment[];
   loading: boolean;

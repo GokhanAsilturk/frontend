@@ -29,14 +29,9 @@ import { useEnrollment } from '../contexts/EnrollmentContext';
 import { LoadingSpinner, ErrorMessage, CourseCard } from '../components/common';
 import { Course, Enrollment } from '../types';
 
-/**
- * Dashboard sayfası - öğrencinin ana sayfası
- * Kayıtlı dersler, istatistikler ve yaklaşan etkinlikleri gösterir
- */
 function Dashboard() {
   const navigate = useNavigate();
   const { user, student } = useAuth();
-  // CourseContext kullanımı düzeltildi
   const { state: courseState, fetchCourses } = useCourse();
   const { courses, loading: coursesLoading, error: coursesError } = courseState;
   
@@ -44,9 +39,7 @@ function Dashboard() {
 
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
   const [recentCourses, setRecentCourses] = useState<Course[]>([]);
-    /**
-   * Sayfa yüklendiğinde verileri getir - SADECE BİR KERE
-   */
+    
   useEffect(() => {
     let isComponentMounted = true;
     
@@ -72,11 +65,8 @@ function Dashboard() {
     return () => {
       isComponentMounted = false;
     };
-  }, [student, fetchCourses, fetchStudentEnrollments, courses.length]); // user yerine student bağımlılığı eklendi
+  }, [student, fetchCourses, fetchStudentEnrollments, courses.length]);
   
-  /**
-   * Kayıtlı dersleri filtrele
-   */
   useEffect(() => {
     if (courses.length > 0 && enrollments.length > 0) {
       const enrolledCourseIds = enrollments.map((e: Enrollment) => e.course?.id ?? e.courseId);
@@ -86,14 +76,12 @@ function Dashboard() {
       setRecentCourses(filteredEnrolledCourses.slice(0, 3));
     }
   }, [courses, enrollments]);
-  /**
-   * İstatistikleri hesapla
-   */
+  
   const getStats = () => {
     const totalCourses = enrolledCourses.length;
-    const completedCourses = 0; // Backend'de status field yok, şimdilik 0
-    const inProgressCourses = enrollments.length; // Tüm enrollment'lar aktif sayılır
-    const completionRate = 0; // Backend'de status field yok, şimdilik 0
+    const completedCourses = 0;
+    const inProgressCourses = enrollments.length;
+    const completionRate = 0;
 
     return {
       totalCourses,
@@ -105,7 +93,7 @@ function Dashboard() {
 
   const stats = getStats();
 
-  if (coursesLoading || enrollmentsLoading) { // ?? -> || olarak düzeltildi
+  if (coursesLoading || enrollmentsLoading) {
     return <LoadingSpinner fullScreen message="Dashboard yükleniyor..." />;
   }
 
@@ -115,7 +103,7 @@ function Dashboard() {
         title="Dashboard Yüklenemedi"
         message={coursesError}        onRetry={() => {
           fetchCourses();
-          if(student?.id) fetchStudentEnrollments(student.id); // student.id kontrolü ve gönderimi
+          if(student?.id) fetchStudentEnrollments(student.id);
         }}
         fullWidth
       />
@@ -124,7 +112,6 @@ function Dashboard() {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Hoş Geldin Bölümü */}
       <Paper
         sx={{
           p: 3,
@@ -208,7 +195,6 @@ function Dashboard() {
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Yaklaşan Etkinlikler</Typography>
             <List>
-              {/* Örnek Etkinlikler - Bu kısım dinamik hale getirilebilir */}
               <ListItem>
                 <ListItemAvatar>
                   <Avatar sx={{ bgcolor: 'secondary.main' }}><ScheduleIcon /></Avatar>

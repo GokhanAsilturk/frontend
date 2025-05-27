@@ -27,8 +27,6 @@ const initialState: EnrollmentState = {
 };
 
 const enrollmentReducer = (state: EnrollmentState, action: EnrollmentAction): EnrollmentState => {
-  console.log('Enrollment Reducer - Action:', action);
-  
   switch (action.type) {
     case 'FETCH_REQUEST':
     case 'ENROLL_REQUEST':
@@ -36,7 +34,6 @@ const enrollmentReducer = (state: EnrollmentState, action: EnrollmentAction): En
       return { ...state, loading: true, error: null };
       
     case 'FETCH_SUCCESS':
-      console.log('Enrollment Reducer - FETCH_SUCCESS Payload:', action.payload);
       return {
         ...state,
         loading: false,
@@ -44,7 +41,6 @@ const enrollmentReducer = (state: EnrollmentState, action: EnrollmentAction): En
       };
       
     case 'ENROLL_SUCCESS': {
-      console.log('Enrollment Reducer - ENROLL_SUCCESS Payload:', action.payload);
       return { 
         ...state, 
         loading: false, 
@@ -53,7 +49,6 @@ const enrollmentReducer = (state: EnrollmentState, action: EnrollmentAction): En
     }
     
     case 'WITHDRAW_SUCCESS': {
-      console.log('Enrollment Reducer - WITHDRAW_SUCCESS Payload (courseId):', action.payload);
       return {
         ...state,
         loading: false,
@@ -64,7 +59,6 @@ const enrollmentReducer = (state: EnrollmentState, action: EnrollmentAction): En
     case 'FETCH_FAILURE':
     case 'ENROLL_FAILURE':
     case 'WITHDRAW_FAILURE':
-      console.error('Enrollment Reducer - Failure Action:', action.type, 'Payload:', action.payload);
       return { ...state, loading: false, error: action.payload };
       
     default:

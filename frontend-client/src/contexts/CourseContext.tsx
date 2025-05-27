@@ -192,46 +192,31 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       dispatch({ type: 'FETCH_COURSES_REQUEST' });
       
       const response = await courseService.getCourseById(id);
-      console.log('Kurs detayı API yanıtı:', response); // Debug için loglama
-      console.log('API response.data:', response.data); // Debug için loglama
-      
-      // API yanıt yapısını kontrol et - backend { success: true, data: {...} } formatında dönüyor
       let courseData: Course | null = null;
       
       if (response?.data) {
-        // Backend'den gelen { success: true, data: {...} } formatını kontrol et
         if (typeof response.data === 'object' && response.data !== null) {
           const responseData = response.data as any;
           
-          // Success ve data özelliklerini kontrol et
           if (responseData.success === true && responseData.data) {
-            console.log('Backend success response data:', responseData.data);
             courseData = responseData.data as Course;
           }
-          // Direkt Course objesi ise (id özelliği varsa)
           else if (responseData.id) {
-            console.log('Direct course object:', responseData);
             courseData = responseData as Course;
           }
-          // Özel extraction fonksiyonu ile deneyelim
           else {
-            console.log('Using extractCourseData function');
             courseData = extractCourseData(response.data);
           }
         }
       }
       
       if (courseData?.id) {
-        console.log('Başarıyla işlenen kurs verisi:', courseData); // Debug için loglama
         dispatch({ type: 'SET_CURRENT_COURSE', payload: courseData });
-        // Loading state'i temizle
         dispatch({ type: 'FETCH_COURSES_SUCCESS', payload: { courses: [], total: 0 } });
       } else {
-        console.error('Kurs verisi bulunamadı veya işlenemedi, response:', response); // Debug için loglama
         dispatch({ type: 'FETCH_COURSES_FAILURE', payload: 'Kurs bilgisi bulunamadı' });
       }
     } catch (error) {
-      console.error('Kurs detayı yükleme hatası:', error); // Debug için loglama
       dispatch({
         type: 'FETCH_COURSES_FAILURE',
         payload: error instanceof Error ? error.message : 'Kurs bilgileri yüklenirken hata oluştu',

@@ -16,14 +16,10 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import { useCourse } from '../contexts/CourseContext';
-import { useEnrollment } from '../contexts/EnrollmentContext'; // useEnrollments -> useEnrollment
+import { useEnrollment } from '../contexts/EnrollmentContext';
 import { LoadingSpinner, ErrorMessage, CourseCard } from '../components/common';
 import { Course } from '../types';
 
-/**
- * Courses sayfası - tüm dersleri listeler ve filtreleme imkanı sunar
- * isEnrolledView prop'u sayesinde sadece kayıtlı dersleri de gösterebilir
- */
 interface CoursesProps {
   readonly isEnrolledView?: boolean;
 }
@@ -41,9 +37,6 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
   
   const coursesPerPage = 9;
 
-  /**
-   * Sayfa yüklendiğinde dersleri getir - SADECE BİR KERE
-   */
   useEffect(() => {
     let isComponentMounted = true;
     
@@ -64,15 +57,11 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
     return () => {
       isComponentMounted = false;
     };
-  }, [fetchCourses]); // fetchCourses dependency'sini ekledik
+  }, [fetchCourses]);
 
-  /**
-   * Dersleri filtrele
-   */
   useEffect(() => {
     let filtered: Course[] = courses;
 
-    // Arama terimi ile filtrele
     if (searchTerm) {
       filtered = filtered.filter((course: Course) =>
         course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,11 +69,9 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
       );
     }
 
-    // Sadece kayıtlı dersler görünüyorsa, kayıtlı derslerle filtrele
     if (isEnrolledView && Array.isArray(enrollments)) {
       filtered = filtered.filter(course => 
         enrollments.some(enrollment => {
-          // Hem doğrudan courseId hem de nested course objesi kontrolü
           return enrollment.courseId === course.id || 
                 (enrollment.course && enrollment.course.id === course.id);
         })
@@ -93,32 +80,21 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
     }
 
     setFilteredCourses(filtered);
-    setCurrentPage(1); // Filtreleme sonrası ilk sayfaya dön
+    setCurrentPage(1);
   }, [courses, searchTerm, isEnrolledView, enrollments]);
 
-  /**
-   * Kayıtlı derslerin ID'lerini al
-   */
   const enrolledCourseIds = Array.isArray(enrollments) ? 
     enrollments.map(e => e.courseId || e.course?.id).filter(Boolean) : [];
     
-  // Debug için kayıt durumunu logla
   console.log('Derslerim sayfası - Kayıt bilgileri:', {
     enrollments,
     enrolledCourseIds
   });
 
-  /**
-   * Derse kayıt ol
-   */
   const handleEnroll = async (courseId: string) => {
     try {
       setEnrollingCourseId(courseId);
       await enrollCourse(courseId);
-      
-      // Derse kaydolunca UI'daki kayıt durumunu güncellemek için zorunlu olarak
-      // kayıtlı dersleri yeniden çekelim
-      // await fetchEnrolledCourses();
       
       console.log(`${courseId} dersine başarıyla kaydolundu`);
     } catch (error) {
@@ -128,9 +104,6 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
     }
   };
 
-  /**
-   * Dersten çık
-   */
   const handleWithdraw = async (courseId: string) => {
     try {
       setWithdrawingCourseId(courseId);
@@ -142,21 +115,14 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
     }
   };
 
-  /**
-   * Ders detaylarını görüntüle
-   */
   const handleViewDetails = (courseId: string) => {
     navigate(`/courses/${courseId}`);
   };
 
-  /**
-   * Filtreleri temizle
-   */
   const clearFilters = () => {
     setSearchTerm('');
   };
 
-  // Sayfalama için dersleri böl
   const startIndex = (currentPage - 1) * coursesPerPage;
   const endIndex = startIndex + coursesPerPage;
   const paginatedCourses = filteredCourses.slice(startIndex, endIndex);
@@ -179,7 +145,6 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Başlık */}
       <Typography variant="h4" gutterBottom>
         {isEnrolledView ? 'Derslerim' : 'Tüm Dersler'}
       </Typography>
@@ -187,7 +152,6 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
         {filteredCourses.length} ders bulundu
       </Typography>
 
-      {/* Filtreler */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <FilterIcon sx={{ mr: 1 }} />
@@ -220,7 +184,6 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
           </Grid>
         </Grid>
 
-        {/* Aktif Filtreler */}
         {searchTerm && (
           <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             {searchTerm && (
@@ -234,7 +197,6 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
         )}
       </Paper>
 
-      {/* Ders Listesi */}
       {paginatedCourses.length > 0 ? (
         <>
           <Grid container spacing={3}>
@@ -253,7 +215,6 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
             ))}
           </Grid>
 
-          {/* Sayfalama */}
           {totalPages > 1 && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
               <Pagination
