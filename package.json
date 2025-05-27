@@ -1,0 +1,17 @@
+{
+  "name": "yedt-case-frontend",
+  "version": "1.0.0",
+  "description": "Yedt Case Study Frontend Monorepo",
+  "private": true,
+  "scripts": {
+    "start:admin": "cd frontend-admin && npm start",
+    "start:client": "cd frontend-client && npm start",
+    "build:admin": "cd frontend-admin && npm run build",
+    "build:client": "cd frontend-client && npm run build",
+    "build": "npm run build:admin && npm run build:client",
+    "test:admin": "cd frontend-admin && npm test",
+    "test:client": "cd frontend-client && npm test"
+  },
+  "author": "",
+  "license": "ISC"
+}
