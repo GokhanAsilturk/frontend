@@ -16,7 +16,7 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import { useCourse } from '../contexts/CourseContext';
-import { useEnrollments } from '../contexts/EnrollmentContext';
+import { useEnrollment } from '../contexts/EnrollmentContext'; // useEnrollments -> useEnrollment
 import { LoadingSpinner, ErrorMessage, CourseCard } from '../components/common';
 import { Course } from '../types';
 
@@ -25,12 +25,12 @@ import { Course } from '../types';
  * isEnrolledView prop'u sayesinde sadece kayıtlı dersleri de gösterebilir
  */
 interface CoursesProps {
-  isEnrolledView?: boolean;
+  readonly isEnrolledView?: boolean;
 }
 
 function Courses({ isEnrolledView = false }: CoursesProps) {
   const { state: { courses, loading, error }, fetchCourses } = useCourse();
-  const { enrollments, enrollCourse, withdrawCourse } = useEnrollments();
+  const { enrollments, enrollCourse, withdrawCourse } = useEnrollment();
   const navigate = useNavigate();
   
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
@@ -64,7 +64,7 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
     return () => {
       isComponentMounted = false;
     };
-  }, []); // DEPENDENCY ARRAY BOŞ OLMALI
+  }, [fetchCourses]); // fetchCourses dependency'sini ekledik
 
   /**
    * Dersleri filtrele
@@ -100,7 +100,7 @@ function Courses({ isEnrolledView = false }: CoursesProps) {
    * Kayıtlı derslerin ID'lerini al
    */
   const enrolledCourseIds = Array.isArray(enrollments) ? 
-    enrollments.map(e => e.courseId || (e.course && e.course.id)).filter(Boolean) : [];
+    enrollments.map(e => e.courseId || e.course?.id).filter(Boolean) : [];
     
   // Debug için kayıt durumunu logla
   console.log('Derslerim sayfası - Kayıt bilgileri:', {

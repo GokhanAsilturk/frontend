@@ -8,7 +8,6 @@ import {
   Typography,
   Button,
   Avatar,
-  Chip,
   LinearProgress,
   Paper,
   List,
@@ -26,7 +25,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useCourse } from '../contexts/CourseContext';
-import { useEnrollments } from '../contexts/EnrollmentContext';
+import { useEnrollment } from '../contexts/EnrollmentContext';
 import { LoadingSpinner, ErrorMessage, CourseCard } from '../components/common';
 import { Course, Enrollment } from '../types';
 
@@ -36,51 +35,55 @@ import { Course, Enrollment } from '../types';
  */
 function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { state: { courses, loading, error }, fetchCourses } = useCourse();
-  const { enrollments, loading: enrollmentsLoading, fetchEnrolledCourses } = useEnrollments();
-
-  // Aliases for loading and error
-  const coursesLoading = loading;
-  const coursesError = error;
+  const { user, student } = useAuth();
+  // CourseContext kullanımı düzeltildi
+  const { state: courseState, fetchCourses } = useCourse();
+  const { courses, loading: coursesLoading, error: coursesError } = courseState;
+  
+  const { enrollments, loading: enrollmentsLoading, fetchStudentEnrollments } = useEnrollment();
 
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
-  const [recentCourses, setRecentCourses] = useState<Course[]>([]);  /**
+  const [recentCourses, setRecentCourses] = useState<Course[]>([]);
+    /**
    * Sayfa yüklendiğinde verileri getir - SADECE BİR KERE
-   */  useEffect(() => {
+   */
+  useEffect(() => {
     let isComponentMounted = true;
     
     const loadData = async () => {
       try {
-        if (isComponentMounted && courses.length === 0) {
-          await fetchCourses();
-          await fetchEnrolledCourses();
+        if (isComponentMounted && student?.id) {
+          if (courses.length === 0) {
+            await fetchCourses();
+          }
+          await fetchStudentEnrollments(student.id);
         }
       } catch (error) {
         if (isComponentMounted) {
           console.error('Veri yükleme hatası:', error);
         }
       }
-    };    // Sadece user varsa ve henüz yüklenmemişse çalıştır
-    if (user) {
+    };
+    
+    if (student?.id) {
       loadData();
     }
 
     return () => {
       isComponentMounted = false;
     };
-  }, []); // Empty dependency array - sadece mount/unmount
+  }, [student, fetchCourses, fetchStudentEnrollments, courses.length]); // user yerine student bağımlılığı eklendi
+  
   /**
    * Kayıtlı dersleri filtrele
-   */  
+   */
   useEffect(() => {
     if (courses.length > 0 && enrollments.length > 0) {
-      const enrolledCourseIds = enrollments.map((e: Enrollment) => e.courseId);
-      const enrolled = courses.filter((course: Course) => enrolledCourseIds.includes(course.id));
-      setEnrolledCourses(enrolled);
+      const enrolledCourseIds = enrollments.map((e: Enrollment) => e.course?.id ?? e.courseId);
+      const filteredEnrolledCourses = courses.filter((course: Course) => enrolledCourseIds.includes(course.id));
       
-      // Son 3 kayıtlı dersi al
-      setRecentCourses(enrolled.slice(0, 3));
+      setEnrolledCourses(filteredEnrolledCourses);
+      setRecentCourses(filteredEnrolledCourses.slice(0, 3));
     }
   }, [courses, enrollments]);
   /**
@@ -102,7 +105,7 @@ function Dashboard() {
 
   const stats = getStats();
 
-  if (coursesLoading ?? enrollmentsLoading) {
+  if (coursesLoading || enrollmentsLoading) { // ?? -> || olarak düzeltildi
     return <LoadingSpinner fullScreen message="Dashboard yükleniyor..." />;
   }
 
@@ -112,7 +115,7 @@ function Dashboard() {
         title="Dashboard Yüklenemedi"
         message={coursesError}        onRetry={() => {
           fetchCourses();
-          fetchEnrolledCourses();
+          if(student?.id) fetchStudentEnrollments(student.id); // student.id kontrolü ve gönderimi
         }}
         fullWidth
       />
@@ -128,195 +131,102 @@ function Dashboard() {
           mb: 3,
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          borderRadius: 2
+          borderRadius: 2,
+          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.12)'
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Avatar
-            sx={{
-              width: 64,
-              height: 64,
-              mr: 2,
-              bgcolor: 'rgba(255, 255, 255, 0.2)'
-            }}
-          >
-            {user?.username?.charAt(0).toUpperCase() ?? 'Ö'}
-          </Avatar>
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              Hoş Geldin, {user?.username ?? 'Öğrenci'}!
-            </Typography>
-            <Typography variant="body1" sx={{ opacity: 0.9 }}>
-              Öğrenme yolculuğuna devam etmeye hazır mısın?
-            </Typography>
-          </Box>
-        </Box>
+        <Typography variant="h5" component="h1" gutterBottom>
+          Hoş Geldin, {user?.username ?? 'Kullanıcı'}!
+        </Typography>
+        <Typography variant="subtitle1">
+          Bugün neler başaracaksın?
+        </Typography>
       </Paper>
 
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6} lg={3}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <CardContent>
+              <Avatar sx={{ bgcolor: 'primary.main', mb: 1 }}><SchoolIcon /></Avatar>
+              <Typography variant="h6">Kayıtlı Dersler</Typography>
+              <Typography variant="h3">{stats.totalCourses}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6} lg={3}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <CardContent>
+              <Avatar sx={{ bgcolor: 'success.main', mb: 1 }}><TrendingUpIcon /></Avatar>
+              <Typography variant="h6">Devam Eden Dersler</Typography>
+              <Typography variant="h3">{stats.inProgressCourses}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6} lg={3}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <CardContent>
+              <Avatar sx={{ bgcolor: 'info.main', mb: 1 }}><AssignmentIcon /></Avatar>
+              <Typography variant="h6">Tamamlanan Dersler</Typography>
+              <Typography variant="h3">{stats.completedCourses}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6} lg={3}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <CardContent>
+              <Avatar sx={{ bgcolor: 'warning.main', mb: 1 }}><ScheduleIcon /></Avatar>
+              <Typography variant="h6">Tamamlama Oranı</Typography>
+              <LinearProgress variant="determinate" value={stats.completionRate} sx={{ height: 10, borderRadius: 5, my: 1 }} />
+              <Typography variant="h4">{stats.completionRate}%</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
       <Grid container spacing={3}>
-        {/* İstatistik Kartları */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <SchoolIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Toplam Dersler</Typography>
-              </Box>
-              <Typography variant="h3" color="primary">
-                {stats.totalCourses}
-              </Typography>
-            </CardContent>
-          </Card>
+        <Grid item xs={12} lg={8}>
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Son Kayıt Olunan Dersler</Typography>
+            {recentCourses.length > 0 ? (
+              <Grid container spacing={2}>
+                {recentCourses.map(course => (
+                  <Grid item xs={12} sm={6} md={4} key={course.id}>
+                    <CourseCard course={course} showEnrollmentActions={false} />
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Typography>Henüz bir derse kayıt olmadınız.</Typography>
+            )}
+            <Box sx={{ mt: 2, textAlign: 'right' }}>
+              <Button variant="contained" onClick={() => navigate('/courses')}>Tüm Dersleri Gör</Button>
+            </Box>
+          </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AssignmentIcon color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Tamamlanan</Typography>
-              </Box>
-              <Typography variant="h3" color="success.main">
-                {stats.completedCourses}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <ScheduleIcon color="warning" sx={{ mr: 1 }} />
-                <Typography variant="h6">Devam Eden</Typography>
-              </Box>
-              <Typography variant="h3" color="warning.main">
-                {stats.inProgressCourses}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TrendingUpIcon color="info" sx={{ mr: 1 }} />
-                <Typography variant="h6">Tamamlama Oranı</Typography>
-              </Box>
-              <Typography variant="h3" color="info.main">
-                %{Math.round(stats.completionRate)}
-              </Typography>
-              <LinearProgress
-                variant="determinate"
-                value={stats.completionRate}
-                sx={{ mt: 1 }}
-              />
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Son Kayıtlı Dersler */}
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">Son Kayıtlı Derslerim</Typography>
-                <Button 
-                  variant="outlined" 
-                  size="small"
-                  onClick={() => navigate('/enrolled-courses')}
-                >
-                  Tümünü Gör
-                </Button>
-              </Box>
-              
-              {recentCourses.length > 0 ? (
-                <Grid container spacing={2}>
-                  {recentCourses.map((course) => (
-                    <Grid item xs={12} sm={6} md={4} key={course.id}>
-                      <CourseCard 
-                        course={course}
-                        showEnrollmentActions={true}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                  <BookmarkIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />                  <Typography variant="body1" color="text.secondary">
-                    Henüz hiçbir derse kayıt olmadınız.
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    sx={{ mt: 2 }}
-                    onClick={() => navigate('/courses')}
-                  >
-                    Dersleri Keşfet
-                  </Button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Yaklaşan Etkinlikler */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Yaklaşan Etkinlikler
-              </Typography>
-              
-              <List>
-                <ListItem>
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: 'primary.main' }}>
-                      <AssignmentIcon />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary="React Projesi Teslimi"
-                    secondary="2 gün kaldı"
-                  />
-                  <Chip label="Önemli" color="error" size="small" />
-                </ListItem>
-                
-                <Divider variant="inset" component="li" />
-                
-                <ListItem>
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: 'success.main' }}>
-                      <SchoolIcon />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary="JavaScript Quiz"
-                    secondary="1 hafta kaldı"
-                  />
-                  <Chip label="Quiz" color="info" size="small" />
-                </ListItem>
-                
-                <Divider variant="inset" component="li" />
-                
-                <ListItem>
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: 'warning.main' }}>
-                      <ScheduleIcon />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary="Canlı Ders: Node.js"
-                    secondary="Yarın 14:00"
-                  />
-                  <Chip label="Canlı" color="warning" size="small" />
-                </ListItem>
-              </List>
-              
-              <Button fullWidth variant="outlined" sx={{ mt: 2 }}>
-                Tüm Etkinlikleri Gör
-              </Button>
-            </CardContent>
-          </Card>
+        <Grid item xs={12} lg={4}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Yaklaşan Etkinlikler</Typography>
+            <List>
+              {/* Örnek Etkinlikler - Bu kısım dinamik hale getirilebilir */}
+              <ListItem>
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: 'secondary.main' }}><ScheduleIcon /></Avatar>
+                </ListItemAvatar>
+                <ListItemText primary="Matematik Final Sınavı" secondary="25 Aralık 2023 - 10:00" />
+              </ListItem>
+              <Divider variant="inset" component="li" />
+              <ListItem>
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: 'info.light' }}><BookmarkIcon /></Avatar>
+                </ListItemAvatar>
+                <ListItemText primary="Proje Teslim Tarihi" secondary="30 Aralık 2023" />
+              </ListItem>
+            </List>
+            <Box sx={{ mt: 2, textAlign: 'right' }}>
+              <Button variant="outlined" onClick={() => navigate('/calendar')}>Takvime Git</Button>
+            </Box>
+          </Paper>
         </Grid>
       </Grid>
     </Box>

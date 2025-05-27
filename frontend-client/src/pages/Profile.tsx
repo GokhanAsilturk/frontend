@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -18,30 +18,38 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
   School as SchoolIcon,
-  CalendarToday as CalendarIcon,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  ExitToApp as ExitToAppIcon
 } from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
-import { useEnrollments } from '../contexts/EnrollmentContext'; // EnrollmentProvider -> useEnrollments
+import { useEnrollment } from '../contexts/EnrollmentContext';
 import { useCourse } from '../contexts/CourseContext';
 import { LoadingSpinner, ErrorMessage } from '../components/common';
-import { User } from '../types';
+import { User, Course, Enrollment, Student, LoginCredentials } from '../types';
+import AuthContext from '../contexts/AuthContext';
 
-/**
- * Profile sayfası - kullanıcının profil bilgilerini görüntüler ve düzenleme imkanı sunar
- */
+interface AuthContextType {
+  user: User | null;
+  student: Student | null;
+  loading: boolean;
+  error: string | null;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  logout: () => Promise<void>;
+  updateProfile: (userData: Partial<User>) => Promise<void>;
+}
+
 function Profile() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, error: authError, updateProfile } = useAuth();
-  const { enrollments, loading: enrollmentsLoading, fetchEnrolledCourses, withdrawCourse } = useEnrollments(); // Added withdrawCourse
-  const { state: { courses } } = useCourse();
+  const authContext = useContext(AuthContext);
+  const { enrollments, loading: enrollmentsLoading, error: enrollmentsError, fetchStudentEnrollments, withdrawCourse } = useEnrollment();
+  const { state: courseState } = useCourse();
   
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState<Partial<User>>({});
@@ -54,65 +62,85 @@ function Profile() {
     newPassword: '',
     confirmPassword: ''
   });
-
-  /**
-   * Sayfa yüklendiğinde verileri getir - SADECE BİR KERE
-   */
+  const [enrolledCoursesDetails, setEnrolledCoursesDetails] = useState<Course[]>([]);
+  
+  // Hook kuralları gereği her koşulda çağrılmalı
+  const { user = null, student = null, loading: authLoading = false, error: authError = null, updateProfile = () => {}, logout = () => Promise.resolve() } = authContext || {};
+  const { courses = [] } = courseState || { courses: [] };
+  
   useEffect(() => {
-    let isComponentMounted = true;
-    
-    const loadData = async () => {
-      try {
-        if (isComponentMounted && enrollments.length === 0) {
-          // Remove the user?.id parameter since fetchEnrolledCourses doesn't expect arguments
-          await fetchEnrolledCourses();
-        }
-      } catch (error) {
-        if (isComponentMounted) {
-          console.error('Kayıtlı dersler yükleme hatası:', error);
-        }
+    if (authContext && student) {
+      console.log("Profile.tsx: student ile fetchStudentEnrollments çağrılıyor:", student);
+      // StudentId kontrolü
+      const studentIdToUse = student.id || student.studentId;
+      if (studentIdToUse) {
+        console.log("Profile.tsx: Kullanılan studentId:", studentIdToUse);
+        fetchStudentEnrollments(studentIdToUse);
+      } else {
+        console.warn("Profile.tsx: Hem student.id hem de student.studentId bulunamadı");
       }
-    };
+    } else {
+      console.warn("Profile.tsx: student bulunamadı, fetchStudentEnrollments çağrılamadı.");
+    }
+  }, [authContext, student, fetchStudentEnrollments]);
 
-    loadData();
-
-    return () => {
-      isComponentMounted = false;
-    };
-  }, [enrollments.length, fetchEnrolledCourses]);
-  /**
-   * Kullanıcı bilgileri değiştiğinde düzenleme formunu güncelle
-   */
   useEffect(() => {
-    if (user) {
+    if (authContext && user) {
       setEditedUser({
         username: user.username,
         email: user.email
       });
     }
-  }, [user]);
+  }, [authContext, user, student]);
 
-  /**
-   * Kayıtlı dersleri al
-   */
-  const enrolledCourses = Array.isArray(courses) ? 
-    courses.filter(course => 
-      Array.isArray(enrollments) && enrollments.some(enrollment => enrollment.courseId === course.id)
-    )
-  : [];
+  useEffect(() => {
+    console.log('Profil useEffect - enrollments değişti:', enrollments);
+    
+    if (enrollments && enrollments.length > 0) {
+      // Öncelikle enrollment içindeki kurs bilgilerini kullan (eğer varsa)
+      let coursesFromEnrollments: Course[] = [];
+      
+      // Her bir enrollment için course bilgisini kontrol et
+      const coursesWithData = enrollments
+        .filter(e => e.course && typeof e.course === 'object' && e.course.id)
+        .map(e => e.course as Course);
+      
+      console.log('Course bilgisi içeren kayıtlar:', coursesWithData);
+      
+      if (coursesWithData.length > 0) {
+        coursesFromEnrollments = coursesWithData;
+      } 
+      // Yoksa, global course listesinden filtrele
+      else if (courses && courses.length > 0) {
+        const enrolledIds = enrollments.map((e: Enrollment) => e.courseId);
+        coursesFromEnrollments = courses.filter((c: Course) => enrolledIds.includes(c.id));
+      }
+      
+      console.log('Profil sayfası - İşlenen kayıt bilgileri:', { 
+        enrollments, 
+        enrolledCourses: coursesFromEnrollments 
+      });
+      
+      setEnrolledCoursesDetails(coursesFromEnrollments);
+    } else {
+      setEnrolledCoursesDetails([]);
+      console.log('Profil sayfası - Kayıt bilgileri boş veya eksik:', { 
+        courses: courses?.length || 0, 
+        enrollments: enrollments?.length || 0 
+      });
+    }
+  }, [courses, enrollments]);
+  
+  if (!authContext) {
+    return <Alert severity="error">Authentication context is not available.</Alert>;
+  }
 
-  /**
-   * Düzenleme modunu başlat
-   */
   const handleEditStart = () => {
     setIsEditing(true);
-    setProfileError(''); // setError -> setProfileError
+    setProfileError('');
     setSuccess('');
   };
 
-  /**
-   * Düzenleme modunu iptal et
-   */
   const handleEditCancel = () => {
     setIsEditing(false);
     if (user) {
@@ -121,405 +149,228 @@ function Profile() {
         email: user.email
       });
     }
-    setProfileError(''); // setError -> setProfileError
+    setProfileError('');
   };
 
-  /**
-   * Profil bilgilerini kaydet
-   */
   const handleSave = async () => {
+    setLoading(true);
+    setProfileError('');
     try {
-      setLoading(true);
-      setProfileError(''); // setError -> setProfileError
-      
-      updateProfile(editedUser);
-      setIsEditing(false);
-      setSuccess('Profil bilgileriniz başarıyla güncellendi.');
-      
-      setTimeout(() => setSuccess(''), 3000);
+      if (user && editedUser.username && editedUser.email) {
+        updateProfile({ id: user.id, ...editedUser });
+        setIsEditing(false);
+        setSuccess('Profil bilgileriniz başarıyla güncellendi.');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setProfileError('Kullanıcı adı ve email boş bırakılamaz.');
+      }
     } catch (error: any) {
-      setProfileError(error.message ?? 'Profil güncellenirken bir hata oluştu.'); // setError -> setProfileError
+      setProfileError(error.message ?? 'Profil güncellenirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Form alanlarını güncelle
-   */
-  const handleInputChange = (field: string, value: string) => {
-    setEditedUser(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleInputChange = (field: keyof User, value: string) => {
+    setEditedUser(prev => ({ ...prev, [field]: value }));
   };
 
-  /**
-   * Şifre değiştirme dialogunu aç
-   */
-  const handlePasswordDialogOpen = () => {
-    setPasswordDialogOpen(true);
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
+  const handlePasswordChange = (field: string, value: string) => {
+    setPasswordData(prev => ({ ...prev, [field]: value }));
   };
 
-  /**
-   * Şifre değiştirme dialogunu kapat
-   */
-  const handlePasswordDialogClose = () => {
+  const handlePasswordSave = async () => {
+    console.log('Yeni şifre:', passwordData);
     setPasswordDialogOpen(false);
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
   };
 
-  /**
-   * Şifre değiştir
-   */
-  const handlePasswordChange = async () => {
-    try {
-      if (passwordData.newPassword !== passwordData.confirmPassword) {
-        setProfileError('Yeni şifreler eşleşmiyor.'); // setError -> setProfileError
-        return;
+  const handleWithdrawCourse = async (courseId: string) => {
+    if (window.confirm('Bu dersten kaydınızı silmek istediğinize emin misiniz?')) {
+      try {
+        await withdrawCourse(courseId);
+        setSuccess('Dersten başarıyla çıkış yapıldı.');
+        if (student?.id) fetchStudentEnrollments(student.id);
+      } catch (error: any) {
+        setProfileError(error.message ?? 'Dersten çıkış yapılırken bir hata oluştu.');
       }
-      
-      if (passwordData.newPassword.length < 6) {
-        setProfileError('Yeni şifre en az 6 karakter olmalıdır.'); // setError -> setProfileError
-        return;
-      }
-
-      setLoading(true);
-      // Şifre değiştirme API çağrısı burada yapılacak
-      // await changePassword(passwordData.currentPassword, passwordData.newPassword);
-      
-      setPasswordDialogOpen(false);
-      setSuccess('Şifreniz başarıyla değiştirildi.');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
-      setProfileError(error.message ?? 'Şifre değiştirilirken bir hata oluştu.'); // setError -> setProfileError
-    } finally {
-      setLoading(false);
     }
   };
-
+  
   if (authLoading || enrollmentsLoading) {
-    return <LoadingSpinner fullScreen message="Profil yükleniyor..." />;
+    return <LoadingSpinner fullScreen message="Profil bilgileri yükleniyor..." />;
   }
 
+  if (authError) {
+    return <ErrorMessage title="Profil Yüklenemedi" message={authError} />;
+  }
+  
   if (!user) {
-    return (
-      <ErrorMessage
-        title="Profil Bulunamadı"
-        message="Kullanıcı bilgileri yüklenemedi."
-        fullWidth
-      />
-    );
+    return <Alert severity="warning">Kullanıcı bilgileri bulunamadı. Lütfen tekrar giriş yapın.</Alert>;
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom component="h1">
         Profilim
       </Typography>
 
-      {/* Başarı ve Hata Mesajları */}
-      {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {success}
-        </Alert>
-      )}
-      {authError && ( // Bu authError useAuth'dan geliyor, bu kalmalı
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {authError}
-        </Alert>
-      )}
-      {profileError && ( // Yeni eklenen profileError için Alert
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {profileError}
-        </Alert>
-      )}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {profileError && <Alert severity="error" sx={{ mb: 2 }}>{profileError}</Alert>}
+      {enrollmentsError && <Alert severity="error" sx={{ mb: 2 }}>Kayıtlı dersler yüklenirken hata: {enrollmentsError}</Alert>}
 
       <Grid container spacing={3}>
-        {/* Profil Bilgileri */}
-        <Grid item xs={12} md={8}>
+        {/* Profil Bilgileri Kartı */}
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6">Kişisel Bilgiler</Typography>
-                {!isEditing ? (
-                  <Button
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                    onClick={handleEditStart}
-                  >
-                    Düzenle
-                  </Button>
-                ) : (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<SaveIcon />}
-                      onClick={handleSave}
-                      disabled={loading}
-                    >
-                      Kaydet
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<CancelIcon />}
-                      onClick={handleEditCancel}
-                      disabled={loading}
-                    >
-                      İptal
-                    </Button>
-                  </Box>
-                )}
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Avatar sx={{ width: 80, height: 80, mr: 2, bgcolor: 'primary.main' }}>
+                  {user.username?.charAt(0).toUpperCase()}
+                </Avatar>
+                <Box>
+                  <Typography variant="h5">{`${student?.firstName ?? ''} ${student?.lastName ?? user.username}`}</Typography>
+                  <Typography color="text.secondary">{user.email}</Typography>
+                  <Chip label={user.role === 'admin' ? 'Yönetici' : 'Öğrenci'} size="small" color="secondary" sx={{ mt: 1 }} />
+                </Box>
               </Box>
 
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
+              {isEditing ? (
+                <>
                   <TextField
-                    fullWidth
                     label="Kullanıcı Adı"
-                    value={isEditing ? editedUser.username ?? '' : user.username}
+                    fullWidth
+                    margin="normal"
+                    value={editedUser.username ?? ''}
                     onChange={(e) => handleInputChange('username', e.target.value)}
-                    disabled={!isEditing}
-                    variant={isEditing ? 'outlined' : 'filled'}
                   />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
                   <TextField
-                    fullWidth
                     label="E-posta"
-                    value={isEditing ? editedUser.email ?? '' : user.email}
+                    fullWidth
+                    margin="normal"
+                    value={editedUser.email ?? ''}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    disabled={!isEditing}
-                    variant={isEditing ? 'outlined' : 'filled'}
-                    type="email"
                   />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Rol"
-                    value={user.role === 'student' ? 'Öğrenci' : 'Yönetici'}
-                    disabled
-                    variant="filled"
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Kayıt Tarihi"
-                    value={user && (user as any).createdAt ? new Date((user as any).createdAt).toLocaleDateString('tr-TR') : ''}
-                    disabled
-                    variant="filled"
-                  />
-                </Grid>
-                
-
-              </Grid>
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Button variant="outlined" onClick={handleEditCancel} startIcon={<CancelIcon />} disabled={loading}>
+                      İptal
+                    </Button>
+                    <Button variant="contained" onClick={handleSave} startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />} disabled={loading}>
+                      Kaydet
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button variant="contained" onClick={handleEditStart} startIcon={<EditIcon />}>
+                    Profili Düzenle
+                  </Button>
+                </Box>
+              )}
             </CardContent>
           </Card>
+        </Grid>
 
-          {/* Güvenlik Ayarları */}
-          <Card sx={{ mt: 3 }}>
+        {/* Hesap Ayarları Kartı */}
+        <Grid item xs={12} md={6}>
+          <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Güvenlik Ayarları
-              </Typography>
-              
-              <List>
-                <ListItem>
-                  <ListItemIcon>
-                    <SecurityIcon />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Şifre Değiştir"
-                    secondary="Hesabınızın güvenliği için düzenli olarak şifrenizi değiştirin"
-                  />
-                  <Button
-                    variant="outlined"
-                    onClick={handlePasswordDialogOpen}
-                  >
-                    Değiştir
-                  </Button>
+              <Typography variant="h6" gutterBottom>Hesap Ayarları</Typography>
+              <List dense>
+                <ListItem onClick={() => setPasswordDialogOpen(true)}>
+                  <ListItemIcon><SecurityIcon /></ListItemIcon>
+                  <ListItemText primary="Şifre Değiştir" />
+                </ListItem>
+                <ListItem onClick={async () => { await logout(); navigate('/login');}}>
+                  <ListItemIcon><ExitToAppIcon /></ListItemIcon>
+                  <ListItemText primary="Çıkış Yap" />
                 </ListItem>
               </List>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Yan Panel */}
-        <Grid item xs={12} md={4}>
-          {/* Profil Özeti */}
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Avatar
-                sx={{
-                  width: 100,
-                  height: 100,
-                  mx: 'auto',
-                  mb: 2,
-                  bgcolor: 'primary.main',
-                  fontSize: '2rem'
-                }}
-              >
-                {user.username?.charAt(0).toUpperCase()}
-              </Avatar>
-              
-              <Typography variant="h6" gutterBottom>
-                {user.username}
-              </Typography>
-              
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {user.email}
-              </Typography>
-              
-              <Chip
-                label="Aktif Öğrenci"
-                color="success"
-                size="small"
-                sx={{ mt: 1 }}
-              />
-            </CardContent>
-          </Card>
-
-          {/* İstatistikler */}
-          <Card sx={{ mt: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                İstatistiklerim
-              </Typography>
-              
-              <List dense>
-                <ListItem>
-                  <ListItemIcon>
-                    <SchoolIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Kayıtlı Dersler"
-                    secondary={`${enrolledCourses.length} ders`}
-                  />
-                </ListItem>
-                
-                <ListItem>
-                  <ListItemIcon>
-                    <CalendarIcon color="success" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Tamamlanan Dersler"
-                    secondary={`0 ders`}
-                  />
-                </ListItem>
-              </List>
-            </CardContent>
-          </Card>
-
-          {/* Son Kayıtlı Dersler */}
-          {enrolledCourses.length > 0 && (
-            <Card sx={{ mt: 3 }}>
+        {/* Kayıtlı Dersler Kartı */}
+        {user.role === 'student' && (
+          <Grid item xs={12}>
+            <Card>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Son Kayıtlı Dersler
-                </Typography>
-                
-                <List dense>
-                  {enrolledCourses.slice(0, 3).map((course) => (
-                    <ListItem 
-                      key={course.id} 
-                      secondaryAction={
-                        <Button 
-                          size="small" 
-                          color="error" 
-                          variant="outlined"
-                          onClick={() => {
-                            if (window.confirm(`${course.name} dersinden kaydınızı silmek istediğinizden emin misiniz?`)) {
-                              withdrawCourse(course.id);
-                            }
-                          }}
+                <Typography variant="h6" gutterBottom>Kayıtlı Derslerim</Typography>
+                {enrollmentsLoading && <CircularProgress />}
+                {enrollmentsError && <Alert severity="error">{enrollmentsError}</Alert>}
+                {!enrollmentsLoading && !enrollmentsError && (
+                  enrolledCoursesDetails.length > 0 ? (
+                    <List dense>
+                      {enrolledCoursesDetails.map(course => (
+                        <ListItem 
+                          key={course.id} 
+                          secondaryAction={
+                            <Button 
+                              size="small" 
+                              variant="outlined" 
+                              color="error"
+                              onClick={() => handleWithdrawCourse(course.id)}
+                            >
+                              Kaydı Sil
+                            </Button>
+                          }
                         >
-                          Sil
-                        </Button>
-                      }
-                    >
-                      <ListItemText
-                        primary={course.name}
-                        secondary={(() => {
-                          if (!course.description) return 'Açıklama bulunmuyor';
-                          return course.description.length > 50 
-                            ? course.description.substring(0, 50) + '...' 
-                            : course.description;
-                        })()}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-                
-                {enrolledCourses.length > 3 && (
-                  <Button 
-                    size="small" 
-                    fullWidth
-                    onClick={() => navigate('/enrolled-courses')}
-                  >
-                    Tümünü Gör ({enrolledCourses.length})
-                  </Button>
+                          <ListItemIcon><SchoolIcon /></ListItemIcon>
+                          <ListItemText 
+                            primary={course.name} 
+                            secondary={course.description?.substring(0,100) + (course.description && course.description.length > 100 ? '...' : '')}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  ) : (
+                    <Typography>Henüz bir derse kayıt olmadınız.</Typography>
+                  )
                 )}
+                <Box sx={{ mt: 2, textAlign: 'right' }}>
+                  <Button variant="contained" onClick={() => navigate('/courses')}>Yeni Derslere Göz At</Button>
+                </Box>
               </CardContent>
             </Card>
-          )}
-        </Grid>
+          </Grid>
+        )}
       </Grid>
 
       {/* Şifre Değiştirme Dialogu */}
-      <Dialog open={passwordDialogOpen} onClose={handlePasswordDialogClose} maxWidth="sm" fullWidth>
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)}>
         <DialogTitle>Şifre Değiştir</DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <TextField
-              fullWidth
-              label="Mevcut Şifre"
-              type="password"
-              value={passwordData.currentPassword}
-              onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-              sx={{ mb: 2 }}
-            />
-            
-            <TextField
-              fullWidth
-              label="Yeni Şifre"
-              type="password"
-              value={passwordData.newPassword}
-              onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-              sx={{ mb: 2 }}
-            />
-            
-            <TextField
-              fullWidth
-              label="Yeni Şifre (Tekrar)"
-              type="password"
-              value={passwordData.confirmPassword}
-              onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-            />
-          </Box>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Mevcut Şifre"
+            type="password"
+            fullWidth
+            variant="standard"
+            value={passwordData.currentPassword}
+            onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Yeni Şifre"
+            type="password"
+            fullWidth
+            variant="standard"
+            value={passwordData.newPassword}
+            onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Yeni Şifre (Tekrar)"
+            type="password"
+            fullWidth
+            variant="standard"
+            value={passwordData.confirmPassword}
+            onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handlePasswordDialogClose}>İptal</Button>
-          <Button
-            onClick={handlePasswordChange}
-            variant="contained"
-            disabled={loading || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
-          >
-            Değiştir
-          </Button>
+          <Button onClick={() => setPasswordDialogOpen(false)}>İptal</Button>
+          <Button onClick={handlePasswordSave}>Kaydet</Button>
         </DialogActions>
       </Dialog>
     </Box>

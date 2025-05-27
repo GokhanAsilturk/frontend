@@ -38,6 +38,7 @@ export const isTokenExpired = (token: string): boolean => {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload.exp < Date.now() / 1000;
   } catch (error) {
+    console.error("Token çözümlenirken hata oluştu:", error);
     return true;
   }
 };
@@ -52,6 +53,7 @@ export const getUserFromToken = (token: string): any => {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload;
   } catch (error) {
+    console.error("Token'dan kullanıcı bilgileri çıkarılırken hata oluştu:", error);
     return null;
   }
-};
+  };

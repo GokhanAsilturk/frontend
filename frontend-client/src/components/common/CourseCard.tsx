@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -14,9 +14,9 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import { School, Person, AccessTime } from '@mui/icons-material';
+import { } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useEnrollments } from '../../contexts/EnrollmentContext';
+import { useEnrollment } from '../../contexts/EnrollmentContext'; // useEnrollments -> useEnrollment
 import { Course } from '../../types';
 
 interface CourseCardProps {
@@ -39,24 +39,26 @@ const CourseCard: React.FC<CourseCardProps> = ({
   loading: propLoading = false
 }) => {
   const navigate = useNavigate();
-  const { enrollments, enrollCourse, withdrawCourse } = useEnrollments();
-  const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'enroll' | 'withdraw' | null }>({
-    open: false,
-    action: null
-  });
-  const [error, setError] = useState('');
-  // Use prop isEnrolled if provided, otherwise calculate from enrollments
-  const isEnrolled = propIsEnrolled !== undefined ? propIsEnrolled : enrollments.some(
-    (enrollment) => {
-      // Hem doğrudan courseId'yi hem de nested course objesini kontrol et
-      return enrollment.courseId === course.id || 
-             (enrollment.course && enrollment.course.id === course.id);
-    }
+  // contextLoading ve contextError olarak yeniden adlandırıldı
+  const { enrollments, loading: contextLoading, error: contextError, enrollCourse, withdrawCourse, isEnrolled: isEnrolledFromContext } = useEnrollment();
+
+  const [cardLoading, setCardLoading] = useState(propLoading);
+  const [cardError, setCardError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null as 'enroll' | 'withdraw' | null });
+
+  // Prop olarak gelen isEnrolled durumunu kullan, yoksa context'ten hesapla
+  const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(() => 
+    typeof propIsEnrolled === 'boolean' ? propIsEnrolled : isEnrolledFromContext(course.id)
   );
   
-  console.log(`Kurs: ${course.name}, Kayıtlı mı: ${isEnrolled}`, { courseId: course.id, enrollments });
-
+  useEffect(() => {
+    // Context'ten gelen enrollments veya propIsEnrolled değiştiğinde isCurrentlyEnrolled durumunu güncelle
+    if (typeof propIsEnrolled === 'boolean') {
+      setIsCurrentlyEnrolled(propIsEnrolled);
+    } else {
+      setIsCurrentlyEnrolled(isEnrolledFromContext(course.id));
+    }
+  }, [propIsEnrolled, course.id, isEnrolledFromContext, enrollments]); // enrollments'ı bağımlılıklara ekledim, çünkü isEnrolledFromContext'in hesaplaması enrollments'a bağlı olabilir.
 
   const handleViewDetails = () => {
     if (onViewDetails) {
@@ -67,8 +69,8 @@ const CourseCard: React.FC<CourseCardProps> = ({
   };
 
   const handleEnrollmentAction = async (action: 'enroll' | 'withdraw') => {
-    setLoading(true);
-    setError('');
+    setCardLoading(true);
+    setCardError('');
 
     try {
       if (action === 'enroll') {
@@ -76,16 +78,18 @@ const CourseCard: React.FC<CourseCardProps> = ({
           await onEnroll(course.id);
         } else {
           await enrollCourse(course.id);
-        }      } else {
-        // For withdraw action
+        }
+        setIsCurrentlyEnrolled(true); // Durumu güncelle
+      } else {
         const withdrawFunction = onWithdraw || withdrawCourse;
         await withdrawFunction(course.id);
+        setIsCurrentlyEnrolled(false); // Durumu güncelle
       }
       setConfirmDialog({ open: false, action: null });
     } catch (error: any) {
-      setError(error.message ?? `${action === 'enroll' ? 'Kayıt' : 'Çıkış'} işlemi başarısız`);
+      setCardError(error.message ?? `${action === 'enroll' ? 'Kayıt' : 'Çıkış'} işlemi başarısız`);
     } finally {
-      setLoading(false);
+      setCardLoading(false);
     }
   };
 
@@ -95,12 +99,12 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
   const closeConfirmDialog = () => {
     setConfirmDialog({ open: false, action: null });
-    setError('');
+    setCardError('');
   };
 
   const getEnrollmentButtonText = () => {
-    if (loading) return <CircularProgress size={20} />;
-    return isEnrolled ? 'Kaydı Sil' : 'Kayıt Ol';
+    if (cardLoading || contextLoading) return <CircularProgress size={20} />; // cardLoading ve contextLoading kontrolü
+    return isCurrentlyEnrolled ? 'Kaydı Sil' : 'Kayıt Ol';
   };
 
   return (
@@ -124,8 +128,8 @@ const CourseCard: React.FC<CourseCardProps> = ({
             </Typography>
             {showEnrollmentActions && (
               <Chip
-                label={isEnrolled ? 'Kayıtlı' : 'Kayıt Yok'}
-                color={isEnrolled ? 'success' : 'default'}
+                label={isCurrentlyEnrolled ? 'Kayıtlı' : 'Kayıt Yok'}
+                color={isCurrentlyEnrolled ? 'success' : 'default'}
                 size="small"
               />
             )}
@@ -146,34 +150,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
             {course.description ?? 'Açıklama bulunmamaktadır.'}
           </Typography>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {course.credits && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <School fontSize="small" color="action" />
-                <Typography variant="caption" color="text.secondary">
-                  {course.credits} Kredi
-                </Typography>
-              </Box>
-            )}
-
-            {course.instructor && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Person fontSize="small" color="action" />
-                <Typography variant="caption" color="text.secondary">
-                  {course.instructor}
-                </Typography>
-              </Box>
-            )}
-
-            {course.duration && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <AccessTime fontSize="small" color="action" />
-                <Typography variant="caption" color="text.secondary">
-                  {course.duration}
-                </Typography>
-              </Box>
-            )}
-          </Box>
+         
         </CardContent>
 
         <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
@@ -183,11 +160,11 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
           {showEnrollmentActions && (
             <Button
-              variant={isEnrolled ? 'outlined' : 'contained'}
-              color={isEnrolled ? 'error' : 'primary'}
+              variant={isCurrentlyEnrolled ? 'outlined' : 'contained'}
+              color={isCurrentlyEnrolled ? 'error' : 'primary'}
               size="small"
-              onClick={() => openConfirmDialog(isEnrolled ? 'withdraw' : 'enroll')}
-              disabled={loading}
+              onClick={() => openConfirmDialog(isCurrentlyEnrolled ? 'withdraw' : 'enroll')}
+              disabled={cardLoading || contextLoading} // cardLoading ve contextLoading kontrolü
               fullWidth
             >
               {getEnrollmentButtonText()}
@@ -202,9 +179,9 @@ const CourseCard: React.FC<CourseCardProps> = ({
           {confirmDialog.action === 'enroll' ? 'Derse Kayıt Ol' : 'Kayıt Silme Onayı'}
         </DialogTitle>
         <DialogContent>
-          {error && (
+          {(cardError || contextError) && ( // cardError ve contextError kontrolü
             <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+              {cardError || contextError}
             </Alert>
           )}
           <Typography>
@@ -214,16 +191,16 @@ const CourseCard: React.FC<CourseCardProps> = ({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeConfirmDialog} disabled={loading}>
+          <Button onClick={closeConfirmDialog} disabled={cardLoading || contextLoading}>
             İptal
           </Button>
           <Button
             onClick={() => confirmDialog.action && handleEnrollmentAction(confirmDialog.action)}
             color={confirmDialog.action === 'enroll' ? 'primary' : 'error'}
             variant="contained"
-            disabled={loading}
+            disabled={cardLoading || contextLoading} // cardLoading ve contextLoading kontrolü
           >
-            {loading ? <CircularProgress size={20} /> : 'Onayla'}
+            {(cardLoading || contextLoading) ? <CircularProgress size={20} /> : 'Onayla'}
           </Button>
         </DialogActions>
       </Dialog>

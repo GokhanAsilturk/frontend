@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import authService from '../services/authService';
 import { clearTokens, saveTokens, getAccessToken } from '../utils/authUtils';
 import { User, Student, AuthContextType } from '../types';
@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * Kullanıcı giriş işlemi
    */
-  const login = async (credentials: { username: string; password: string }): Promise<void> => {
+  const login = useCallback(async (credentials: { username: string; password: string }): Promise<void> => {
     try {
       dispatch({ type: 'LOGIN_REQUEST' });
       
@@ -105,12 +105,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
       throw error;
     }
-  };
+  }, []);
 
   /**
    * Kullanıcı çıkış işlemi
    */
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     try {
       await authService.logout();
     } catch (error) {
@@ -119,14 +119,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       clearTokens();
       dispatch({ type: 'LOGOUT' });
     }
-  };
+  }, []);
 
   /**
    * Kullanıcı profil güncelleme
    */
-  const updateProfile = (data: Partial<User>): void => {
+  const updateProfile = useCallback((data: Partial<User>): void => {
     dispatch({ type: 'UPDATE_PROFILE', payload: data });
-  };
+  }, []);
 
   /**
    * Kimlik doğrulama durumunu kontrol et

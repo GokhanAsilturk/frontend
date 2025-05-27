@@ -51,13 +51,15 @@ api.interceptors.response.use(
         // Orijinal isteği yeniden gönder
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return axios(originalRequest);
-        
-      } catch (refreshError) {
+          } catch (refreshError) {
         // Yenileme başarısız olursa logout
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         window.location.href = '/login';
-        return Promise.reject(refreshError);
+        
+        // Error'u loglayıp yeniden fırlatıyoruz
+        console.error('Token yenileme hatası:', refreshError);
+        throw new Error('Token yenileme başarısız oldu');
       }
     }
     
@@ -68,7 +70,7 @@ api.interceptors.response.use(
 // API response wrapper
 export const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T>>): T => {
   if (response.data.success) {
-    return response.data.data as T;
+    return response.data.data;
   } else {
     throw new Error(response.data.message ?? 'API request failed');
   }

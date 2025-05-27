@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -6,13 +6,13 @@ import {
   Paper,
   Box,
   Button,
-  Chip,
   Grid,
   Avatar,
   Divider,
   Alert,
   Breadcrumbs,
-  Link,
+  Link as MuiLink,
+  CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -21,55 +21,65 @@ import {
   School as SchoolIcon,
 } from '@mui/icons-material';
 import { useCourse } from '../contexts/CourseContext';
-import { useEnrollments } from '../contexts/EnrollmentContext';
+import { useEnrollment } from '../contexts/EnrollmentContext';
 import { ErrorMessage, LoadingSpinner } from '../components/common';
+import AuthContext from '../contexts/AuthContext';
 
 const CourseDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: courseIdFromParams } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { state: { currentCourse: course, loading: courseLoading, error: courseError }, getCourseById } = useCourse();
-  const { enrollCourse, withdrawCourse, isEnrolled } = useEnrollments();
-  const [enrollmentLoading, setEnrollmentLoading] = useState(false);
 
-  const enrolled = course ? isEnrolled(course.id) : false;
+  const courseContext = useCourse();
+  const enrollmentContext = useEnrollment();
+  const authContext = useContext(AuthContext);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const { user } = authContext || { user: null };
+
+  const { state: courseState, getCourseById } = courseContext;
+  const { currentCourse, loading: courseLoading, error: courseError } = courseState;
+
+  const {
+    loading: contextEnrollmentLoading,
+    error: enrollmentError,
+    enrollCourse,
+    withdrawCourse,
+    isEnrolled
+  } = enrollmentContext;
+
+  const enrolled = currentCourse ? isEnrolled(currentCourse.id) : false;
+  
   useEffect(() => {
-    if (id) {
-      // Kurs verisini yüklemek için timeout ekleyelim
-      const loadCourse = async () => {
-        try {
-          await getCourseById(id);
-        } catch (error) {
-          console.error("Kurs yükleme hatası:", error);
-        }
-      };
-      
-      loadCourse();
+    if (courseIdFromParams) {
+      getCourseById(courseIdFromParams);
     }
-  }, [id, getCourseById]);
+  }, [courseIdFromParams, getCourseById]);
+  
+  if (!authContext) {
+    return <Alert severity="error">Authentication context is not available.</Alert>;
+  }
 
   const handleEnroll = async () => {
-    if (!course) return;
-    
+    if (!currentCourse) return;
+    setActionLoading(true);
     try {
-      setEnrollmentLoading(true);
-      await enrollCourse(course.id);
+      await enrollCourse(currentCourse.id);
     } catch (error) {
       console.error('Enrollment error:', error);
     } finally {
-      setEnrollmentLoading(false);
+      setActionLoading(false);
     }
   };
 
   const handleWithdraw = async () => {
-    if (!course) return;
-
+    if (!currentCourse) return;
+    setActionLoading(true);
     try {
-      setEnrollmentLoading(true);
-      await withdrawCourse(course.id);
+      await withdrawCourse(currentCourse.id);
     } catch (error) {
       console.error('Withdrawal error:', error);
     } finally {
-      setEnrollmentLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -77,16 +87,6 @@ const CourseDetail: React.FC = () => {
     navigate('/courses');
   };
 
-  // Interface tanımlayarak
-  interface EnrollmentState {
-    status: string;
-    error?: string; // Optional property
-  }
-
-  const enrollmentState: EnrollmentState = {
-    status: 'not_enrolled',
-  };
-  // Yükleme durumunu daha detaylı göster
   if (courseLoading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -100,7 +100,7 @@ const CourseDetail: React.FC = () => {
             sx={{ mt: 2 }} 
             onClick={handleBackClick}
           >
-            Kurslara Dön
+            Derslere Dön
           </Button>
         </Paper>
       </Container>
@@ -113,22 +113,22 @@ const CourseDetail: React.FC = () => {
         <ErrorMessage message={courseError} />
         <Box sx={{ mt: 2, textAlign: 'center' }}>
           <Button variant="outlined" onClick={handleBackClick} startIcon={<ArrowBackIcon />}>
-            Kurslara Dön
+            Derslere Dön
           </Button>
         </Box>
       </Container>
     );
   }
 
-  if (!course) {
+  if (!currentCourse) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Alert severity="warning">
-          Kurs bulunamadı.
+          Kurs bulunamadı veya yüklenemedi.
         </Alert>
         <Box sx={{ mt: 2, textAlign: 'center' }}>
           <Button variant="outlined" onClick={handleBackClick} startIcon={<ArrowBackIcon />}>
-            Kurslara Dön
+            Derslere Dön
           </Button>
         </Box>
       </Container>
@@ -137,30 +137,27 @@ const CourseDetail: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Breadcrumbs */}
       <Breadcrumbs sx={{ mb: 3 }}>
-        <Link
+        <MuiLink
           component="button"
           variant="body1"
           onClick={handleBackClick}
           sx={{ textDecoration: 'none' }}
         >
-          Kurslar
-        </Link>
-        <Typography color="text.primary">{course.name}</Typography>
+          Dersler
+        </MuiLink>
+        <Typography color="text.primary">{currentCourse.name}</Typography>
       </Breadcrumbs>
 
-      {/* Back Button */}
       <Button
         variant="outlined"
         startIcon={<ArrowBackIcon />}
         onClick={handleBackClick}
         sx={{ mb: 3 }}
       >
-        Kurslara Dön
+        Derslere Dön
       </Button>
 
-      {/* Course Header */}
       <Paper elevation={2} sx={{ p: 4, mb: 3 }}>
         <Grid container spacing={3} alignItems="center">
           <Grid item>
@@ -177,98 +174,67 @@ const CourseDetail: React.FC = () => {
           </Grid>
           <Grid item xs>
             <Typography variant="h4" component="h1" gutterBottom>
-              {course.name}
+              {currentCourse.name}
             </Typography>
             <Typography variant="h6" color="text.secondary" paragraph>
-              {course.description}
+              {currentCourse.description}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
-              {enrolled && (
-                <Chip
-                  label="Kayıtlı"
-                  color="success"
-                  variant="filled"
-                />
-              )}
-              <Chip
-                label={`Kredi: ${course.credits}`}
-                variant="outlined"
-                icon={<SchoolIcon />}
-              />
-            </Box>
+            
           </Grid>
           <Grid item>
-            {!enrolled ? (
-              <Button
-                variant="contained"
-                size="large"
-                onClick={handleEnroll}
-                disabled={enrollmentLoading}
-                sx={{ minWidth: 120 }}
-              >
-                {enrollmentLoading ? 'Kaydediliyor...' : 'Kayıt Ol'}
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                color="error"
-                size="large"
-                onClick={handleWithdraw}
-                disabled={enrollmentLoading}
-                sx={{ minWidth: 120 }}
-              >
-                {enrollmentLoading ? 'İşleniyor...' : 'Dersten Çık'}
-              </Button>
+            {user && (
+              (() => {
+                const loadingText = enrolled ? 'Çıkış Yapılıyor...' : 'Kayıt Olunuyor...';
+                const actionText = enrolled ? 'Dersten Çık' : 'Derse Kayıt Ol';
+                const buttonText = actionLoading ? loadingText : actionText;
+
+                return (
+                  <Button
+                    variant={enrolled ? "outlined" : "contained"}
+                    color={enrolled ? "error" : "primary"}
+                    onClick={enrolled ? handleWithdraw : handleEnroll}
+                    disabled={actionLoading || contextEnrollmentLoading} 
+                    startIcon={actionLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                  >
+                    {buttonText}
+                  </Button>
+                );
+              })()
             )}
           </Grid>
         </Grid>
       </Paper>
 
-      {/* Course Details */}
-      <Paper elevation={2} sx={{ p: 4 }}>
-        <Typography variant="h5" component="h2" gutterBottom>
-          Kurs Detayları
-        </Typography>
-        <Divider sx={{ mb: 3 }} />
-        
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body1">
-                <strong>Kredi:</strong> {course.credits}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body1">
-                <strong>Eğitmen:</strong> {course?.instructor ?? 'Belirtilmemiş'}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <AccessTimeIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body1">
-                <strong>Süre:</strong> {course?.duration ?? 'Belirtilmemiş'}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Açıklama
-            </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              {course.description}
-            </Typography>
-          </Grid>
-        </Grid>
+      {enrollmentError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          İşlem sırasında bir hata oluştu: {enrollmentError}
+        </Alert>
+      )}
 
-        {/* Enrollment Status */}
-        {enrollmentState.error && enrollmentState.error.length > 0 && (
-          <Alert severity="error" sx={{ mt: 3 }}>
-            {enrollmentState.error}
-          </Alert>
-        )}
-      </Paper>
+      <Divider sx={{ my: 3 }} />
+
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={8}>
+          <Typography variant="h5" gutterBottom>Ders İçeriği</Typography>
+          <Typography paragraph>
+            {currentCourse.description || 'Bu ders için detaylı içerik bilgisi henüz eklenmemiştir.'}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Ders Bilgileri</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              <Typography variant="body2">Eğitmen: {currentCourse.instructor ?? 'Belirtilmemiş'}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <AccessTimeIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              <Typography variant="body2">Süre: {currentCourse.duration ?? 'Belirtilmemiş'}</Typography>
+            </Box>
+            
+          </Paper>
+        </Grid>
+      </Grid>
     </Container>
   );
 };

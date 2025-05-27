@@ -2,7 +2,8 @@
  * Backend API'sinden gelen User tipi
  */
 export interface User {
-  id: string;
+  id: string;      // student id
+  userId: string;  // user id
   username: string;
   email: string;
   role: 'student' | 'admin';
@@ -13,7 +14,7 @@ export interface User {
  */
 export interface Student {
   id: string;
-  userId: string;
+  studentId: string;
   firstName: string;
   lastName: string;
   birthDate: string;
@@ -43,7 +44,6 @@ export interface Enrollment {
   studentId: string;
   courseId: string;
   course?: Course;
-  student?: Student;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,8 +53,8 @@ export interface Enrollment {
  */
 export interface ApiResponse<T> {
   success: boolean;
-  data: T;
   message?: string;
+  data: T;
   error?: string;
 }
 
@@ -84,7 +84,7 @@ export interface LoginRequest {
  * Giriş yanıtı tipi - Backend'den gelen format
  */
 export interface LoginResponse {
-  user: User;
+  user: User & { userId?: string };
   accessToken: string;
   refreshToken: string;
 }
@@ -193,8 +193,8 @@ export interface EnrollmentContextType {
   enrollments: Enrollment[];
   loading: boolean;
   error: string | null;
-  fetchEnrolledCourses: () => Promise<void>;
+  fetchStudentEnrollments: (studentId: string) => Promise<void>;
   enrollCourse: (courseId: string) => Promise<void>;
-  withdrawCourse: (courseId: string) => Promise<void>;
+  withdrawCourse: (courseId: string) => Promise<void>; 
   isEnrolled: (courseId: string) => boolean;
 }
