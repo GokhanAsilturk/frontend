@@ -69,12 +69,9 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   }
 };
 
-// Context interface - using the one from types/index.ts
 
-// Context oluşturma
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider props interface
 interface AuthProviderProps {
   children: ReactNode;
 }

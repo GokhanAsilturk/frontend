@@ -2,6 +2,8 @@ export interface User {
   id: string;
   userId: string;
   username: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: 'student' | 'admin';
 }
@@ -9,8 +11,6 @@ export interface User {
 export interface Student {
   id: string;
   studentId: string;
-  firstName: string;
-  lastName: string;
   birthDate: string;
   createdAt: string;
   updatedAt: string;

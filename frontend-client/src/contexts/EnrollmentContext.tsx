@@ -93,7 +93,7 @@ const parseEnrollmentArrayResponse = (apiResponse: ApiResponse<Enrollment[]> | E
         return [];
       }
     } else {
-      console.error("parseEnrollmentArrayResponse - API response unsuccessful:", apiResponse.message || "Unknown error");
+      console.error("parseEnrollmentArrayResponse - API response unsuccessful:", apiResponse.message ?? "Unknown error");
       return [];
     }
   }
@@ -109,7 +109,7 @@ const parseEnrollmentResponse = (apiResponse: ApiResponse<Enrollment> | Enrollme
   // Check if it's already an Enrollment object
   if (apiResponse && typeof apiResponse === 'object' && 'id' in apiResponse && 'courseId' in apiResponse) {
     console.log("parseEnrollmentResponse - Is Enrollment object, returning directly:", apiResponse);
-    return apiResponse as Enrollment;
+    return apiResponse;
   }
   
   // Handle ApiResponse structure
@@ -120,7 +120,7 @@ const parseEnrollmentResponse = (apiResponse: ApiResponse<Enrollment> | Enrollme
       console.log("parseEnrollmentResponse - Valid data:", apiResponse.data);
       return apiResponse.data;
     } else {
-      console.error("parseEnrollmentResponse - API response unsuccessful:", apiResponse.message || "Unknown error");
+      console.error("parseEnrollmentResponse - API response unsuccessful:", apiResponse.message ?? "Unknown error");
       return null;
     }
   }
@@ -150,7 +150,7 @@ export const EnrollmentProvider: React.FC<EnrollmentProviderProps> = ({ children
       
       if (!response || !response.success) {
         console.error('EnrollmentContext: API yanıtı başarısız:', response);
-        throw new Error(response?.message || 'API request failed');
+        throw new Error(response?.message ?? 'API request failed');
       }
       
       const enrollments = parseEnrollmentArrayResponse(response);

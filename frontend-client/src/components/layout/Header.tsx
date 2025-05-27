@@ -30,7 +30,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
-  const { user, student, logout } = useAuth();
+  const { user, logout } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
@@ -63,8 +63,8 @@ const Header: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
-  const displayName = student?.firstName ?? user?.username ?? 'Öğrenci';
-  const avatarLetter = student?.firstName?.charAt(0) ?? user?.username?.charAt(0) ?? 'Ö';
+  const displayName = user?.firstName ?? user?.username ?? 'Öğrenci';
+  const avatarLetter = user?.firstName?.charAt(0) ?? user?.username?.charAt(0) ?? 'Ö';
 
   return (
     <>

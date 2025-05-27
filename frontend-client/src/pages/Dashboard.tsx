@@ -123,7 +123,7 @@ function Dashboard() {
         }}
       >
         <Typography variant="h5" component="h1" gutterBottom>
-          Hoş Geldin, {user?.username ?? 'Kullanıcı'}!
+          Hoş Geldin, {user?.firstName ?? 'Kullanıcı'}!
         </Typography>
         <Typography variant="subtitle1">
           Bugün neler başaracaksın?

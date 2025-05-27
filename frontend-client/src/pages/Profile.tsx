@@ -228,7 +228,7 @@ function Profile() {
                   {user.username?.charAt(0).toUpperCase()}
                 </Avatar>
                 <Box>
-                  <Typography variant="h5">{`${student?.firstName ?? ''} ${student?.lastName ?? user.username}`}</Typography>
+                  <Typography variant="h5">{`${user?.firstName ?? ''} ${user?.lastName ?? user.username}`}</Typography>
                   <Typography color="text.secondary">{user.email}</Typography>
                   <Chip label={user.role === 'admin' ? 'Yönetici' : 'Öğrenci'} size="small" color="secondary" sx={{ mt: 1 }} />
                 </Box>
