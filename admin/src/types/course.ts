@@ -36,11 +36,3 @@ export interface CourseFilters {
   startDateTo?: string;
   credits?: number;
 }
-
-export interface PaginatedCoursesResponse {
-  courses: Course[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}

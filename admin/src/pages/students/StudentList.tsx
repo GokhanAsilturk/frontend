@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Button,
-  Chip,
   IconButton,
   Tooltip,
   Dialog,
@@ -23,45 +22,6 @@ import { studentService } from '../../services';
 import { DataTable, DataTableColumn } from '../../components/common';
 import { useNotification, useConfirmDialog } from '../../hooks';
 import { formatDate, getErrorMessage } from '../../utils';
-
-// Helper functions for rendering
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active':
-      return 'success';
-    case 'inactive':
-      return 'default';
-    case 'graduated':
-      return 'primary';
-    case 'suspended':
-      return 'error';
-    default:
-      return 'default';
-  }
-};
-
-const getStatusLabel = (status: string) => {
-  switch (status) {
-    case 'active':
-      return 'Aktif';
-    case 'inactive':
-      return 'Pasif';
-    case 'graduated':
-      return 'Mezun';
-    case 'suspended':
-      return 'Askıda';
-    default:
-      return status;
-  }
-};
-
-const StatusChip: React.FC<{ status: string }> = ({ status }) => (
-  <Chip
-    label={getStatusLabel(status)}
-    color={getStatusColor(status) as any}
-    size="small"
-  />
-);
 
 const ActionsCell: React.FC<{
   student: Student;
@@ -96,26 +56,35 @@ const StudentList: React.FC = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(0); // Material-UI TablePagination 0-based indexing kullanır
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { showError, showSuccess } = useNotification();
-  const { confirmDelete } = useConfirmDialog();
-  const fetchStudents = async () => {
+  const { confirmDelete } = useConfirmDialog();  const fetchStudents = async () => {
     try {
       setLoading(true);
       const response = await studentService.getStudents({
-        page: page + 1,
+        page: page + 1, // Backend 1-based indexing kullanır
         limit: rowsPerPage,
         search: searchTerm,
       });
-      setStudents(response.students ?? []);
-      setTotalCount(response.total ?? 0);
+      
+      // Backend yanıtı: { success: true, data: [...], pagination: {...} }
+      if (response.success && response.data) {
+        setStudents(response.data);
+        setTotalCount(response.pagination.total);
+      } else {
+        setStudents([]);
+        setTotalCount(0);
+      }
     } catch (error) {
+      console.error('Öğrenci verilerini çekerken hata:', error);
       showError(getErrorMessage(error));
+      setStudents([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -143,10 +112,20 @@ const StudentList: React.FC = () => {
       'Öğrenci', 
       async () => {
         try {
+          console.log("Silme işlemi başlatılıyor:", studentId);
+          
+          // Silme işlemini gerçekleştir ve tamamlanmasını bekle
           await studentService.deleteStudent(studentId);
+          
+          console.log("Silme işlemi tamamlandı");
           showSuccess('Öğrenci başarıyla silindi');
-          fetchStudents();
+          
+          // Başarılı silme işleminden sonra listeyi yenile
+          setTimeout(() => {
+            fetchStudents();
+          }, 500); // Kısa bir gecikme ekleyerek backend'in işlemi tamamlamasını sağla
         } catch (error) {
+          console.error("Silme işlemi sırasında hata:", error);
           showError(getErrorMessage(error));
         }
       }
@@ -155,8 +134,6 @@ const StudentList: React.FC = () => {
     setSelectedStudent(student);
     setDetailDialogOpen(true);
   };
-
-  const renderStatusChip = (status: string) => <StatusChip status={status} />;
   
   const renderActions = (row: Student) => (
     <ActionsCell
@@ -166,44 +143,42 @@ const StudentList: React.FC = () => {
       onDelete={handleDelete}
     />
   );
-
   const columns: DataTableColumn<Student>[] = [
     {
-      id: 'studentNumber',
-      label: 'Öğrenci No',
+      id: 'username',
+      label: 'Kullanıcı Adı',
       minWidth: 120,
+      format: (value: any, row: Student) => row.user.username,
     },
     {
       id: 'firstName',
       label: 'Ad',
       minWidth: 100,
+      format: (value: any, row: Student) => row.user.firstName,
     },
     {
       id: 'lastName',
       label: 'Soyad',
       minWidth: 100,
+      format: (value: any, row: Student) => row.user.lastName,
     },
     {
       id: 'email',
       label: 'E-posta',
       minWidth: 200,
+      format: (value: any, row: Student) => row.user.email,
     },
     {
-      id: 'phone',
-      label: 'Telefon',
-      minWidth: 130,
-    },    {
-      id: 'status',
-      label: 'Durum',
-      minWidth: 100,
-      format: renderStatusChip,
+      id: 'birthDate',
+      label: 'Doğum Tarihi',
+      minWidth: 120,
+      format: (value: any, row: Student) => formatDate(row.birthDate),
     },
     {
-      id: 'enrollmentDate',
+      id: 'createdAt',
       label: 'Kayıt Tarihi',
       minWidth: 120,
-      format: (value: string) => formatDate(value),
-    },
+      format: (value: any, row: Student) => formatDate(row.createdAt),    },
     {
       id: 'actions',
       label: 'İşlemler',
@@ -258,21 +233,15 @@ const StudentList: React.FC = () => {
         fullWidth
       >
         <DialogTitle>Öğrenci Detayları</DialogTitle>
-        <DialogContent>
-          {selectedStudent && (
+        <DialogContent>          {selectedStudent && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <Typography><strong>Öğrenci No:</strong> {selectedStudent.studentNumber}</Typography>
-              <Typography><strong>Ad Soyad:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</Typography>
-              <Typography><strong>E-posta:</strong> {selectedStudent.email}</Typography>
-              <Typography><strong>Telefon:</strong> {selectedStudent.phone}</Typography>              <Typography><strong>Adres:</strong> {selectedStudent.address}</Typography>
-              {selectedStudent.dateOfBirth && (
-                <Typography><strong>Doğum Tarihi:</strong> {new Date(selectedStudent.dateOfBirth).toLocaleDateString('tr-TR')}</Typography>
+              <Typography><strong>Kullanıcı Adı:</strong> {selectedStudent.user.username}</Typography>
+              <Typography><strong>Ad Soyad:</strong> {selectedStudent.user.firstName} {selectedStudent.user.lastName}</Typography>
+              <Typography><strong>E-posta:</strong> {selectedStudent.user.email}</Typography>
+              {selectedStudent.birthDate && (
+                <Typography><strong>Doğum Tarihi:</strong> {new Date(selectedStudent.birthDate).toLocaleDateString('tr-TR')}</Typography>
               )}
-              <Typography><strong>Kayıt Tarihi:</strong> {formatDate(selectedStudent.enrollmentDate)}</Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <strong>Durum:</strong>
-                <StatusChip status={selectedStudent.status} />
-              </Box>
+              <Typography><strong>Kayıt Tarihi:</strong> {formatDate(selectedStudent.createdAt)}</Typography>
             </Box>
           )}
         </DialogContent>

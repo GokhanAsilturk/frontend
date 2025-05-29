@@ -1,17 +1,18 @@
-export interface Student {
-  id: string;
-  studentNumber: string;
+export interface UserNested {
+  username: string;
+  email: string;
+  role: 'admin' | 'student';
   firstName: string;
   lastName: string;
-  email: string;
-  phone?: string;
-  dateOfBirth?: string;
-  address?: string;
-  enrollmentDate: string;
-  status: 'active' | 'inactive' | 'graduated' | 'suspended';
-  isActive: boolean;
+}
+
+export interface Student {
+  id: string;
+  userId: string;
+  birthDate: string;
   createdAt: string;
   updatedAt: string;
+  user: UserNested;
 }
 
 export interface CreateStudentRequest {
@@ -25,6 +26,7 @@ export interface CreateStudentRequest {
 
 export interface UpdateStudentRequest extends Partial<CreateStudentRequest> {
   isActive?: boolean;
+  birthDate?: string; // Update sırasında da gönderilebilir
 }
 
 export interface StudentFilters {
@@ -32,12 +34,4 @@ export interface StudentFilters {
   isActive?: boolean;
   enrollmentDateFrom?: string;
   enrollmentDateTo?: string;
-}
-
-export interface PaginatedStudentsResponse {
-  students: Student[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }

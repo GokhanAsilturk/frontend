@@ -10,7 +10,6 @@ export interface Enrollment {
   status: EnrollmentStatus;
   createdAt: string;
   updatedAt: string;
-  // Relations
   student?: Student;
   course?: Course;
 }
@@ -40,17 +39,11 @@ export interface EnrollmentFilters {
   enrollmentDateTo?: string;
 }
 
-export interface PaginatedEnrollmentsResponse {
-  enrollments: Enrollment[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+// Detaylı kayıt tipi ekliyoruz
+export interface EnrollmentWithDetails extends Enrollment {
+  studentName?: string;
+  studentEmail?: string;
+  courseName?: string;
+  courseCode?: string;
 }
 
-export interface EnrollmentWithDetails extends Enrollment {
-  studentName: string;
-  studentEmail: string;
-  courseName: string;
-  courseCode: string;
-}

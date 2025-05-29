@@ -11,13 +11,3 @@ export interface ErrorLog {
   createdAt: string;
   updatedAt: string;
 }
-
-export interface ErrorLogResponse {
-  data: ErrorLog[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
-}

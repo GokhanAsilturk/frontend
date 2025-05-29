@@ -95,8 +95,8 @@ const CourseList: React.FC = () => {
         page: page + 1,
         limit: rowsPerPage,
       });
-      setCourses(response.courses ?? []);
-      setTotalCount(response.total ?? 0);
+      setCourses(response.data ?? []);
+      setTotalCount(response.pagination.total ?? 0);
     } catch (error) {
       showError(getErrorMessage(error));
     } finally {

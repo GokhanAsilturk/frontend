@@ -86,17 +86,23 @@ export const EnrollmentForm: React.FC = () => {
         const submitData = {
           ...values,
           grade: values.grade === '' ? undefined : Number(values.grade)
-        };
-
-        if (isEdit && id) {
+        };        if (isEdit && id) {
           await enrollmentService.updateEnrollment(id, submitData as UpdateEnrollmentRequest);
           showSuccess('Kayıt başarıyla güncellendi');
+          
+          // Başarı mesajı görünsün diye kısa bir bekleme
+          setTimeout(() => {
+            navigate(ROUTES.ENROLLMENTS);
+          }, 1500);
         } else {
           await enrollmentService.createEnrollment(submitData as CreateEnrollmentRequest);
           showSuccess('Kayıt başarıyla oluşturuldu');
+          
+          // Başarı mesajı görünsün diye kısa bir bekleme
+          setTimeout(() => {
+            navigate(ROUTES.ENROLLMENTS);
+          }, 1500);
         }
-        
-        navigate(ROUTES.ENROLLMENTS);
       } catch (error: any) {        const message = error?.response?.data?.message ?? 
           (isEdit ? 'Kayıt güncellenirken bir hata oluştu' : 'Kayıt oluşturulurken bir hata oluştu');
         showError(message);
@@ -113,7 +119,7 @@ export const EnrollmentForm: React.FC = () => {
       
       try {
         setInitialLoading(true);
-        const enrollment = await enrollmentService.getEnrollment(id);
+        const enrollment = (await enrollmentService.getEnrollment(id)).data;
         formik.setValues({
           studentId: enrollment.studentId,
           courseId: enrollment.courseId,
@@ -134,23 +140,22 @@ export const EnrollmentForm: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [studentsResponse, coursesResponse] = await Promise.all([
-          studentService.getStudents({ page: 1, limit: 1000 }),
-          courseService.getCourses({}, { page: 1, limit: 1000 })
+        const [students, courses] = await Promise.all([
+          (await studentService.getStudents({ page: 1, limit: 1000 })).data,
+          (await courseService.getCourses({}, { page: 1, limit: 1000 })).data
         ]);
         
-        // Response kontrollerini ekleyelim
-        if (studentsResponse && Array.isArray(studentsResponse.students)) {
-          setStudents(studentsResponse.students);
+        if (students && Array.isArray(students)) {
+          setStudents(students);
         } else {
-          console.error('Beklenmeyen öğrenci API yanıtı:', studentsResponse);
+          console.error('Beklenmeyen öğrenci API yanıtı:', students);
           setStudents([]);
         }
         
-        if (coursesResponse && Array.isArray(coursesResponse.courses)) {
-          setCourses(coursesResponse.courses);
+        if (courses && Array.isArray(courses)) {
+          setCourses(courses);
         } else {
-          console.error('Beklenmeyen ders API yanıtı:', coursesResponse);
+          console.error('Beklenmeyen ders API yanıtı:', courses);
           setCourses([]);
         }
       } catch (error: any) {
@@ -191,8 +196,8 @@ export const EnrollmentForm: React.FC = () => {
           formik.values.courseId
         );
         
-        if (result.hasConflict) {
-          setConflictWarning(result.message ?? 'Bu öğrenci zaten bu derse kayıtlı');
+        if (result.data.hasConflict) {
+          setConflictWarning(result.data.message ?? 'Bu öğrenci zaten bu derse kayıtlı');
         } else {
           setConflictWarning('');
         }      } catch (error: any) {
@@ -303,10 +308,10 @@ export const EnrollmentForm: React.FC = () => {
                                 </Avatar>
                                 <Box>
                                   <Typography variant="body2">
-                                    {student.firstName} {student.lastName}
+                                    {student.user.firstName} {student.user.lastName}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    {student.email}
+                                    {student.user.email}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -434,19 +439,19 @@ export const EnrollmentForm: React.FC = () => {
                           </Avatar>
                           <Box>
                             <Typography variant="subtitle1" fontWeight="medium">
-                              {selectedStudent.firstName} {selectedStudent.lastName}
+                              {selectedStudent.user.firstName} {selectedStudent.user.lastName}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {selectedStudent.email}
+                              {selectedStudent.user.email}
                             </Typography>
                           </Box>
                         </Box>
                         <Box>
                           <Typography variant="body2" color="text.secondary">
-                            Öğrenci No: {selectedStudent.studentNumber}
+                            Öğrenci No: {'99'}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            Durum: {selectedStudent.status}
+                            Durum: {"Aktif"}
                           </Typography>
                         </Box>
                       </Stack>

@@ -21,23 +21,10 @@ export interface LoginCredentials {
   password: string;
 }
 
-// Backend API yanıt formatı
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
-export interface LoginResponseData {
+export interface LoginResponse{
   user: User;
   accessToken: string;
   refreshToken: string;
-}
-
-export interface LoginResponse {
-  success: boolean;
-  message: string;
-  data: LoginResponseData;
 }
 
 export interface AuthContextType {
@@ -49,13 +36,8 @@ export interface AuthContextType {
   checkAuthStatus: () => Promise<void>;
 }
 
-export interface RefreshTokenData {
-  accessToken: string;
-  refreshToken?: string;
-}
 
 export interface RefreshTokenResponse {
-  success: boolean;
-  message: string;
-  data: RefreshTokenData;
+  accessToken: string;
+  refreshToken?: string;
 }

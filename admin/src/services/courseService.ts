@@ -4,46 +4,47 @@ import {
   CreateCourseRequest, 
   UpdateCourseRequest,
   CourseFilters,
-  PaginatedCoursesResponse,
-  PaginationParams
+  PaginationParams,
+  ApiResponse,
+  ApiPaginatedResponse
 } from '../types';
 
 class CourseService {
   async getCourses(
     filters?: CourseFilters, 
     pagination?: PaginationParams
-  ): Promise<PaginatedCoursesResponse> {
+  ): Promise<ApiPaginatedResponse<Course>> {
     const params = { ...filters, ...pagination };
-    return apiClient.get<PaginatedCoursesResponse>('/courses', { params });
+    return apiClient.get<ApiPaginatedResponse<Course>>('/courses', { params });
   }
 
-  async getCourse(id: string): Promise<Course> {
-    return apiClient.get<Course>(`/courses/${id}`);
+  async getCourse(id: string): Promise<ApiResponse<Course>> {
+    return apiClient.get<ApiResponse<Course>>(`/courses/${id}`);
   }
 
-  async createCourse(data: CreateCourseRequest): Promise<Course> {
-    return apiClient.post<Course>('/courses', data);
+  async createCourse(data: CreateCourseRequest): Promise<ApiResponse<Course>> {
+    return apiClient.post<ApiResponse<Course>>('/courses', data);
   }
 
-  async updateCourse(id: string, data: UpdateCourseRequest): Promise<Course> {
-    return apiClient.put<Course>(`/courses/${id}`, data);
+  async updateCourse(id: string, data: UpdateCourseRequest): Promise<ApiResponse<Course>> {
+    return apiClient.put<ApiResponse<Course>>(`/courses/${id}`, data);
   }
 
   async deleteCourse(id: string): Promise<void> {
-    return apiClient.delete(`/courses/${id}`);
+    await apiClient.delete(`/courses/${id}`);
   }
 
-  async toggleCourseStatus(id: string): Promise<Course> {
-    return apiClient.patch<Course>(`/courses/${id}/toggle-status`);
+  async toggleCourseStatus(id: string): Promise<ApiResponse<Course>> {
+    return apiClient.patch<ApiResponse<Course>>(`/courses/${id}/toggle-status`);
   }
 
-  async checkCourseCodeUniqueness(code: string, excludeId?: string): Promise<{ isUnique: boolean }> {
+  async checkCourseCodeUniqueness(code: string, excludeId?: string): Promise<ApiResponse<{ isUnique: boolean }>> {
     const params = excludeId ? { excludeId } : {};
-    return apiClient.get<{ isUnique: boolean }>(`/courses/check-code/${code}`, { params });
+    return apiClient.get<ApiResponse<{ isUnique: boolean }>>(`/courses/check-code/${code}`, { params });
   }
 
-  async bulkDeleteCourses(ids: string[]): Promise<void> {
-    return apiClient.post('/courses/bulk-delete', { ids });
+  async bulkDeleteCourses(ids: string[]): Promise<ApiResponse<void>> {
+    return apiClient.post<ApiResponse<void>>('/courses/bulk-delete', { ids });
   }
 
   async exportCourses(filters?: CourseFilters): Promise<Blob> {

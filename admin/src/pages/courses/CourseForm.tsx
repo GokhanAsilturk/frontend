@@ -93,9 +93,13 @@ const CourseForm: React.FC = () => {
             endDate: values.endDate,
             isActive: values.isActive,
           };
-          
-          await courseService.updateCourse(id, updateData);
+            await courseService.updateCourse(id, updateData);
           showSuccess('Ders başarıyla güncellendi');
+          
+          // Başarı mesajı görünsün diye kısa bir bekleme
+          setTimeout(() => {
+            navigate('/courses');
+          }, 1500);
         } else {
           const createData: CreateCourseRequest = {
             name: values.name,
@@ -110,9 +114,12 @@ const CourseForm: React.FC = () => {
           
           await courseService.createCourse(createData);
           showSuccess('Ders başarıyla oluşturuldu');
+          
+          // Başarı mesajı görünsün diye kısa bir bekleme
+          setTimeout(() => {
+            navigate('/courses');
+          }, 1500);
         }
-        
-        navigate('/courses');
       } catch (error) {
         const errorMessage = getErrorMessage(error);
         setSubmitError(errorMessage);
@@ -128,7 +135,7 @@ const CourseForm: React.FC = () => {
     
     try {
       setInitialLoading(true);
-      const course = await courseService.getCourse(id);
+      const course = (await courseService.getCourse(id)).data;
       
       formik.setValues({
         name: course.name,

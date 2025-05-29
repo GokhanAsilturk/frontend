@@ -17,153 +17,62 @@ import {
   DialogActions,
   TextField,
   Avatar,
-  Stack
+  Stack,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
   Add as AddIcon,
   FileDownload as ExportIcon,
   Person as PersonIcon,
   School as SchoolIcon,
-  Grade as GradeIcon
+  Grade as GradeIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Visibility as ViewIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { DataTable, DataTableColumn } from '../../components/common/DataTable';
-import { useNotification } from '../../hooks/useNotification';
-import { enrollmentService } from '../../services/enrollmentService';
-import { studentService } from '../../services/studentService';
-import { courseService } from '../../services/courseService';
-import { 
-  EnrollmentWithDetails, 
-  EnrollmentStatus, 
-  EnrollmentFilters,
-  Student,
-  Course 
-} from '../../types';
-import { formatDate } from '../../utils/dateUtils';
+import { useNotification, useConfirmDialog } from '../../hooks';
+import { enrollmentService, studentService, courseService } from '../../services';
+import { EnrollmentWithDetails, EnrollmentStatus, EnrollmentFilters, Student, Course } from '../../types';
+import { formatDate, getErrorMessage } from '../../utils';
 import { ROUTES } from '../../utils/constants';
 
-const columns: DataTableColumn<EnrollmentWithDetails>[] = [
-  {
-    id: 'studentName',
-    label: 'Öğrenci',
-    width: '20%',
-    format: (value: string, row?: EnrollmentWithDetails) => (
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
-          <PersonIcon fontSize="small" />
-        </Avatar>
-        <Box>
-          <Typography variant="body2" fontWeight="medium">
-            {value}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {row?.studentEmail}
-          </Typography>
-        </Box>
-      </Stack>
-    )
-  },
-  {
-    id: 'courseName',
-    label: 'Ders',
-    width: '20%',
-    format: (value: string, row?: EnrollmentWithDetails) => (
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Avatar sx={{ bgcolor: 'secondary.main', width: 32, height: 32 }}>
-          <SchoolIcon fontSize="small" />
-        </Avatar>
-        <Box>
-          <Typography variant="body2" fontWeight="medium">
-            {value}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {row?.courseCode}
-          </Typography>
-        </Box>
-      </Stack>
-    )
-  },
-  {
-    id: 'enrollmentDate',
-    label: 'Kayıt Tarihi',
-    width: '15%',
-    format: (value: string) => formatDate(value)
-  },
-  {
-    id: 'status',
-    label: 'Durum',
-    width: '12%',
-    align: 'center',
-    format: (value: EnrollmentStatus) => {
-      const getStatusColor = (): 'success' | 'warning' | 'error' | 'info' => {
-        switch (value) {
-          case EnrollmentStatus.ENROLLED:
-            return 'info';
-          case EnrollmentStatus.COMPLETED:
-            return 'success';
-          case EnrollmentStatus.DROPPED:
-            return 'error';
-          case EnrollmentStatus.PENDING:
-            return 'warning';
-          default:
-            return 'info';
-        }
-      };
-
-      const getStatusLabel = (): string => {
-        switch (value) {
-          case EnrollmentStatus.ENROLLED:
-            return 'Kayıtlı';
-          case EnrollmentStatus.COMPLETED:
-            return 'Tamamlandı';
-          case EnrollmentStatus.DROPPED:
-            return 'Bırakıldı';
-          case EnrollmentStatus.PENDING:
-            return 'Beklemede';
-          default:
-            return value;
-        }
-      };
-
-      return (
-        <Chip
-          label={getStatusLabel()}
-          color={getStatusColor()}
-          size="small"
-          variant="filled"
-        />
-      );
-    }
-  },
-  {
-    id: 'grade',
-    label: 'Not',
-    width: '10%',
-    align: 'center',
-    format: (value?: number) => value ? (
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
-        <GradeIcon fontSize="small" color="primary" />
-        <Typography variant="body2" fontWeight="medium">
-          {value}
-        </Typography>
-      </Stack>
-    ) : (
-      <Typography variant="body2" color="text.secondary">
-        -
-      </Typography>
-    )
-  },
-  {
-    id: 'actions',
-    label: 'İşlemler',
-    width: '13%',
-    align: 'center'
-  }
-];
+// ActionsCell bileşeni - işlem butonlarını gösterir
+const ActionsCell: React.FC<{
+  enrollment: EnrollmentWithDetails;
+  onView: (enrollment: EnrollmentWithDetails) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}> = ({ enrollment, onView, onEdit, onDelete }) => (
+  <Box sx={{ display: 'flex', gap: 0.5 }}>
+    <Tooltip title="Görüntüle">
+      <IconButton size="small" onClick={() => onView(enrollment)}>
+        <ViewIcon />
+      </IconButton>
+    </Tooltip>
+    <Tooltip title="Düzenle">
+      <IconButton size="small" onClick={() => onEdit(enrollment.id)}>
+        <EditIcon />
+      </IconButton>
+    </Tooltip>
+    <Tooltip title="Sil">
+      <IconButton
+        size="small"
+        onClick={() => onDelete(enrollment.id)}
+        color="error"
+      >
+        <DeleteIcon />
+      </IconButton>
+    </Tooltip>
+  </Box>
+);
 
 export const EnrollmentList: React.FC = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
+  const { confirmDelete } = useConfirmDialog();
   
   const [enrollments, setEnrollments] = useState<EnrollmentWithDetails[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -181,12 +90,14 @@ export const EnrollmentList: React.FC = () => {
 
   const handleSearch = (newSearchTerm: string) => {
     setSearchTerm(newSearchTerm);
-    setPage(0); // Arama yapıldığında ilk sayfaya dön
+    setPage(0); 
   };
+  
   const fetchEnrollments = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await enrollmentService.getEnrollmentsWithDetails(
+      // Normal getEnrollments metodunu kullanıyoruz
+      const response = await enrollmentService.getEnrollments(
         {
           ...filters,
           ...(searchTerm && { search: searchTerm })
@@ -196,10 +107,45 @@ export const EnrollmentList: React.FC = () => {
           limit: rowsPerPage
         }
       );
-        // Response kontrolü ekleyelim ve Array.isArray kontrolü yapalım
-      if (response && response.enrollments && Array.isArray(response.enrollments)) {
-        setEnrollments(response.enrollments);
-        setTotal(response.total || 0);
+      
+      if (response.success && Array.isArray(response.data)) {
+        // Backend yanıtındaki verileri zenginleştirerek EnrollmentWithDetails'e dönüştürüyoruz
+        const enrichedData: EnrollmentWithDetails[] = await Promise.all(
+          response.data.map(async enrollment => {
+            let studentName = 'Bilinmeyen Öğrenci';
+            let studentEmail = '';
+            let courseName = enrollment.course?.name || 'Bilinmeyen Ders';
+            let courseCode = enrollment.course?.code || '';
+            
+            // Öğrenci bilgilerini almak için ek istek yapabiliriz
+            if (enrollment.studentId) {
+              try {
+                // Öğrenci detaylarını getir
+                const studentResponse = await studentService.getStudent(enrollment.studentId);
+                if (studentResponse.success && studentResponse.data) {
+                  const studentData = studentResponse.data;
+                  if (studentData.user) {
+                    studentName = `${studentData.user.firstName} ${studentData.user.lastName}`;
+                    studentEmail = studentData.user.email;
+                  }
+                }
+              } catch (error) {
+                console.error(`Öğrenci bilgileri alınamadı (ID: ${enrollment.studentId})`, error);
+              }
+            }
+            
+            return {
+              ...enrollment,
+              studentName,
+              studentEmail,
+              courseName,
+              courseCode
+            };
+          })
+        );
+        
+        setEnrollments(enrichedData);
+        setTotal(response.pagination.total);
       } else {
         console.error('Beklenmeyen API yanıtı:', response);
         setEnrollments([]);
@@ -214,22 +160,23 @@ export const EnrollmentList: React.FC = () => {
       setLoading(false);
     }
   }, [filters, searchTerm, page, rowsPerPage, showError]);
+
   const fetchStudentsAndCourses = useCallback(async () => {
     try {      
       const [studentsResponse, coursesResponse] = await Promise.all([
         studentService.getStudents({ page: 1, limit: 1000 }),
         courseService.getCourses({}, { page: 1, limit: 1000 })
       ]);
-        // Response kontrolünü ve Array.isArray kontrolünü ekliyoruz
-      if (studentsResponse && studentsResponse.students && Array.isArray(studentsResponse.students)) {
-        setStudents(studentsResponse.students);
+      
+      if (studentsResponse.success && Array.isArray(studentsResponse.data)) {
+        setStudents(studentsResponse.data);
       } else {
         console.error('Öğrenci verilerinde hata:', studentsResponse);
         setStudents([]);
       }
       
-      if (coursesResponse && coursesResponse.courses && Array.isArray(coursesResponse.courses)) {
-        setCourses(coursesResponse.courses);
+      if (coursesResponse.success && Array.isArray(coursesResponse.data)) {
+        setCourses(coursesResponse.data);
       } else {
         console.error('Ders verilerinde hata:', coursesResponse);
         setCourses([]);
@@ -261,14 +208,46 @@ export const EnrollmentList: React.FC = () => {
     };
 
   const handleDelete = async (id: string) => {
-    try {
-      await enrollmentService.deleteEnrollment(id);
-      showSuccess('Kayıt başarıyla silindi');
-      fetchEnrollments();
-    } catch (error) {
-      showError('Kayıt silinirken bir hata oluştu');
-    }
+    confirmDelete(
+      'Kayıt',
+      async () => {
+        try {
+          console.log("Silme işlemi başlatılıyor:", id);
+          
+          // Silme işlemini gerçekleştir ve tamamlanmasını bekle
+          await enrollmentService.deleteEnrollment(id);
+          
+          console.log("Silme işlemi tamamlandı");
+          showSuccess('Kayıt başarıyla silindi');
+          
+          // Başarılı silme işleminden sonra listeyi yenile
+          setTimeout(() => {
+            fetchEnrollments();
+          }, 500); // Kısa bir gecikme ekleyerek backend'in işlemi tamamlamasını sağla
+        } catch (error) {
+          console.error("Silme işlemi sırasında hata:", error);
+          showError(getErrorMessage(error));
+        }
+      }
+    );
   };
+
+  const handleViewDetail = (enrollment: EnrollmentWithDetails) => {
+    setSelectedEnrollment(enrollment);
+    setDetailDialogOpen(true);
+  };
+
+  const renderActions = (row: EnrollmentWithDetails) => (
+    <ActionsCell
+      enrollment={row}
+      onView={handleViewDetail}
+      onEdit={(id) => {
+        console.log("Düzenleme sayfasına yönlendiriliyor, ID:", id);
+        navigate(`${ROUTES.ENROLLMENTS}/edit/${id}`);
+      }}
+      onDelete={handleDelete}
+    />
+  );
 
   const handleExport = async () => {
     try {
@@ -283,13 +262,9 @@ export const EnrollmentList: React.FC = () => {
       document.body.removeChild(a);
       showSuccess('Kayıtlar başarıyla dışa aktarıldı');
     } catch (error) {
+      console.error('Dışa aktarma hatası:', error);
       showError('Dışa aktarma sırasında bir hata oluştu');
     }
-  };
-
-  const handleViewDetails = (enrollment: EnrollmentWithDetails) => {
-    setSelectedEnrollment(enrollment);
-    setDetailDialogOpen(true);
   };
 
   const clearFilters = () => {
@@ -298,30 +273,131 @@ export const EnrollmentList: React.FC = () => {
     setPage(0);
   };
 
-  const actions = [
+  // Tablo sütunları
+  const columns: DataTableColumn<EnrollmentWithDetails>[] = [
     {
-      label: 'Görüntüle',
-      onClick: handleViewDetails,
-      color: 'primary' as const
+      id: 'studentName',
+      label: 'Öğrenci',
+      width: '20%',
+      format: (value: string, row?: EnrollmentWithDetails) => (
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+            <PersonIcon fontSize="small" />
+          </Avatar>
+          <Box>
+            <Typography variant="body2" fontWeight="medium">
+              {value}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {row?.studentEmail}
+            </Typography>
+          </Box>
+        </Stack>
+      )
     },
     {
-      label: 'Düzenle',
-      onClick: (enrollment: EnrollmentWithDetails) => 
-        navigate(`${ROUTES.ENROLLMENTS}/edit/${enrollment.id}`),
-      color: 'secondary' as const
+      id: 'courseName',
+      label: 'Ders',
+      width: '20%',
+      format: (value: string, row?: EnrollmentWithDetails) => (
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar sx={{ bgcolor: 'secondary.main', width: 32, height: 32 }}>
+            <SchoolIcon fontSize="small" />
+          </Avatar>
+          <Box>
+            <Typography variant="body2" fontWeight="medium">
+              {value}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {row?.courseCode}
+            </Typography>
+          </Box>
+        </Stack>
+      )
     },
     {
-      label: 'Sil',
-      onClick: handleDelete,
-      color: 'error' as const,
-      requireConfirm: true,
-      confirmTitle: 'Kayıt Silme',
-      confirmMessage: 'Bu kaydı silmek istediğinizden emin misiniz?'
+      id: 'enrollmentDate',
+      label: 'Kayıt Tarihi',
+      width: '15%',
+      format: (value: string) => formatDate(value)
+    },
+    {
+      id: 'status',
+      label: 'Durum',
+      width: '12%',
+      align: 'center',
+      format: (value: EnrollmentStatus) => {
+        const getStatusColor = (): 'success' | 'warning' | 'error' | 'info' => {
+          switch (value) {
+            case EnrollmentStatus.ENROLLED:
+              return 'info';
+            case EnrollmentStatus.COMPLETED:
+              return 'success';
+            case EnrollmentStatus.DROPPED:
+              return 'error';
+            case EnrollmentStatus.PENDING:
+              return 'warning';
+            default:
+              return 'info';
+          }
+        };
+
+        const getStatusLabel = (): string => {
+          switch (value) {
+            case EnrollmentStatus.ENROLLED:
+              return 'Kayıtlı';
+            case EnrollmentStatus.COMPLETED:
+              return 'Tamamlandı';
+            case EnrollmentStatus.DROPPED:
+              return 'Bırakıldı';
+            case EnrollmentStatus.PENDING:
+              return 'Beklemede';
+            default:
+              return value;
+          }
+        };
+
+        return (
+          <Chip
+            label={getStatusLabel()}
+            color={getStatusColor()}
+            size="small"
+            variant="filled"
+          />
+        );
+      }
+    },
+    {
+      id: 'grade',
+      label: 'Not',
+      width: '10%',
+      align: 'center',
+      format: (value?: number) => value ? (
+        <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+          <GradeIcon fontSize="small" color="primary" />
+          <Typography variant="body2" fontWeight="medium">
+            {value}
+          </Typography>
+        </Stack>
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          -
+        </Typography>
+      )
+    },
+    {
+      id: 'actions',
+      label: 'İşlemler',
+      width: '13%',
+      align: 'center',
+      format: (_, row: EnrollmentWithDetails) => renderActions(row),
     }
   ];
 
+  // Bileşenin UI kısmı...
   return (
     <Box>
+      {/* Başlık ve butonlar */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Kayıt Yönetimi
@@ -344,8 +420,10 @@ export const EnrollmentList: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Filtreler ve Tablo */}
       <Card>
         <Box p={3}>
+          {/* Filtre kısmı */}
           <Grid container spacing={3} mb={3}>
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth size="small">
@@ -354,11 +432,12 @@ export const EnrollmentList: React.FC = () => {
                   value={filters.studentId ?? ''}
                   onChange={handleFilterChange('studentId')}
                   label="Öğrenci"
-                >                  <MenuItem value="">Tümü</MenuItem>
+                >
+                  <MenuItem value="">Tümü</MenuItem>
                   {Array.isArray(students) && students.length > 0 ? (
                     students.map((student) => (
                       <MenuItem key={student.id} value={student.id}>
-                        {student.firstName} {student.lastName}
+                        {student.user.firstName} {student.user.lastName}
                       </MenuItem>
                     ))
                   ) : (
@@ -369,7 +448,8 @@ export const EnrollmentList: React.FC = () => {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth size="small">
-                <InputLabel>Ders</InputLabel>                <Select
+                <InputLabel>Ders</InputLabel>
+                <Select
                   value={filters.courseId ?? ''}
                   onChange={handleFilterChange('courseId')}
                   label="Ders"
@@ -413,7 +493,10 @@ export const EnrollmentList: React.FC = () => {
                 Filtreleri Temizle
               </Button>
             </Grid>
-          </Grid>          <DataTable<EnrollmentWithDetails>
+          </Grid>
+          
+          {/* Tablo */}
+          <DataTable<EnrollmentWithDetails>
             columns={columns}
             rows={enrollments || []}
             loading={loading}
@@ -423,7 +506,7 @@ export const EnrollmentList: React.FC = () => {
             onPageChange={(event: unknown, newPage: number) => setPage(newPage)}
             onRowsPerPageChange={(event: React.ChangeEvent<HTMLInputElement>) => {
               setRowsPerPage(parseInt(event.target.value, 10));
-              setPage(0); // Sayfa başına satır sayısı değiştiğinde ilk sayfaya dön
+              setPage(0);
             }}
             onSearch={handleSearch}
             onRefresh={fetchEnrollments}
@@ -433,7 +516,7 @@ export const EnrollmentList: React.FC = () => {
         </Box>
       </Card>
 
-      {/* Detail Dialog */}
+      {/* Detay Diyaloğu */}
       <Dialog
         open={detailDialogOpen}
         onClose={() => setDetailDialogOpen(false)}

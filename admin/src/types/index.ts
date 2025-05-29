@@ -2,7 +2,7 @@ export * from './auth';
 export * from './student';
 export * from './course';
 export * from './enrollment';
-export type { ApiResponse } from './api';
+export type { ApiResponse , ApiPaginatedResponse } from './api';
 export * from './errorLog';
 
 // UI Types

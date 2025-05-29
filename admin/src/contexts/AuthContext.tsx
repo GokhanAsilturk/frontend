@@ -59,34 +59,46 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);  const login = useCallback(async (credentials: LoginCredentials): Promise<void> => {
+  const [state, dispatch] = useReducer(authReducer, initialState);  
+  const login = useCallback(async (credentials: LoginCredentials): Promise<void> => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const response = await authService.login(credentials);
       
-      // API yanıt formatını kontrol et - response artık doğrudan data objesi
-      const responseData = response.data; 
-      
-      // Gerekli alanları kontrol et
-      if (!responseData.accessToken || !responseData.refreshToken || !responseData.user) {
-        console.error('Token bilgileri eksik:', response);
-        throw new Error('Giriş başarısız: Token bilgileri eksik');
+      // Backend'den dönen veri yapısını doğru şekilde işle
+      if (response.success && response.data) {
+        const { accessToken, refreshToken, user } = response.data;
+        
+        // Gerekli alanları kontrol et
+        if (!accessToken || !refreshToken || !user) {
+          console.error('Token bilgileri eksik:', response);
+          throw new Error('Giriş başarısız: Token bilgileri eksik');
+        }
+        
+        // Store tokens using utility function
+        saveTokens(accessToken, refreshToken);
+        
+        dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+      } else {
+        throw new Error(response.message ?? 'Giriş başarısız');
       }
-      
-      // Store tokens using utility function
-      saveTokens(responseData.accessToken, responseData.refreshToken);
-      
-      dispatch({ type: 'LOGIN_SUCCESS', payload: responseData.user });
     } catch (error) {
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }
-  }, [dispatch]);const logout = useCallback((): void => {
+  }, 
+  
+  [dispatch]);const logout = useCallback((): void => {
+    // Refresh token'ı al ve API'ye gönder
+    const refreshToken = localStorage.getItem('refreshToken');
+    
     // Clear tokens using utility function
     clearTokens();
     
     // Call logout API to invalidate tokens on server
-    authService.logout().catch(console.error);
+    if (refreshToken) {
+      authService.logout(refreshToken).catch(console.error);
+    }
     
     dispatch({ type: 'LOGOUT' });
   }, []);const checkAuthStatus = useCallback(async (): Promise<void> => {

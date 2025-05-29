@@ -35,7 +35,7 @@ export const NotificationSnackbar: React.FC<NotificationSnackbarProps> = ({
   return (
     <Snackbar
       open={true}
-      autoHideDuration={currentNotification.duration || 5000}
+      autoHideDuration={currentNotification.duration ?? 5000}
       onClose={handleClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       TransitionComponent={SlideTransition}

@@ -12,16 +12,18 @@ export interface PaginationParams {
 }
 
 export interface ApiResponse<T> {
-  data: T;
   message?: string;
   success: boolean;
+  data: T;
 }
 
-export interface PaginatedApiResponse<T> extends ApiResponse<T> {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+export interface ApiPaginatedResponse<T> extends ApiResponse<T[]> {
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }
 
 export interface SelectOption {

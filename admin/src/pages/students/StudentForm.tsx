@@ -30,16 +30,16 @@ const StudentForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
   const { showSuccess, showError } = useNotification();
-
   const [loading, setLoading] = React.useState(false);
-  const [submitError, setSubmitError] = React.useState<string | null>(null);  const formik = useFormik({
+  const [initialLoading, setInitialLoading] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);const formik = useFormik({
     initialValues: {
       username: '',
       password: '',
       firstName: '',
       lastName: '',
       email: '',
-      dateOfBirth: '', // Form içinde kullanılacak
+      birthDate: '', // Form içinde kullanılacak
       status: 'active' as 'active' | 'inactive' | 'graduated' | 'suspended',
       isActive: true,
     },
@@ -49,19 +49,29 @@ const StudentForm: React.FC = () => {
       setSubmitError(null);
 
       try {        if (isEdit && id) {          // ISO formatında tarih gönderiyoruz
-          const birthDate = values.dateOfBirth ? new Date(values.dateOfBirth).toISOString().split('T')[0] : '';
+          const birthDate = values.birthDate ? new Date(values.birthDate).toISOString().split('T')[0] : '';
           
           const updateData: UpdateStudentRequest = {
             firstName: values.firstName,
             lastName: values.lastName,
             email: values.email,
-            birthDate: birthDate, // dateOfBirth yerine birthDate kullanıyoruz
+            birthDate: birthDate,
             isActive: values.isActive
           };
-          await studentService.updateStudent(id, updateData);
-          showSuccess('Öğrenci başarıyla güncellendi');        } else {
+          
+          console.log('Update data being sent:', updateData); // Debug için
+          const result = await studentService.updateStudent(id, updateData);
+          console.log('Update result:', result); // Debug için
+          
+          showSuccess('Öğrenci başarıyla güncellendi');
+          
+          // Başarı mesajı görünsün diye kısa bir bekleme
+          setTimeout(() => {
+            navigate('/students');
+          }, 1500);
+        } else {
           // ISO formatında tarih gönderiyoruz
-          const birthDate = values.dateOfBirth ? new Date(values.dateOfBirth).toISOString().split('T')[0] : '';
+          const birthDate = values.birthDate ? new Date(values.birthDate).toISOString().split('T')[0] : '';
           
           const createData: CreateStudentRequest = {
             username: values.username,
@@ -73,8 +83,12 @@ const StudentForm: React.FC = () => {
           };
           await studentService.createStudent(createData);
           showSuccess('Öğrenci başarıyla eklendi');
+          
+          // Başarı mesajı görünsün diye kısa bir bekleme
+          setTimeout(() => {
+            navigate('/students');
+          }, 1500);
         }
-        navigate('/students');
       } catch (error: any) {
         setSubmitError(error.message ?? 'Bir hata oluştu');
         showError(
@@ -84,27 +98,36 @@ const StudentForm: React.FC = () => {
         setLoading(false);
       }
     },
-  });
-  // Edit modunda öğrenci verilerini yükle
+  });  // Edit modunda öğrenci verilerini yükle
   React.useEffect(() => {
     if (isEdit && id) {
       const loadStudent = async () => {
         try {
-          const student = await studentService.getStudent(id);
-          formik.setValues({
-            username: '', // Güvenlik nedeniyle boş bırakılıyor
-            password: '', // Güvenlik nedeniyle boş bırakılıyor
-            firstName: student.firstName ?? '',
-            lastName: student.lastName ?? '',
-            email: student.email ?? '',
-            dateOfBirth: student.dateOfBirth ? student.dateOfBirth.split('T')[0] : '',
-            status: student.status ?? 'active',
-            isActive: student.isActive,
-          });
+          setInitialLoading(true);
+          const student = (await studentService.getStudent(id)).data;
+          console.log('Loaded student data:', student); // Debug için
+            // Backend'den gelen veri yapısını kontrol et
+          if (student) {
+            formik.setValues({
+              username: student.user.username || '', 
+              password: '', // Güvenlik nedeniyle boş bırakılıyor
+              firstName: student.user.firstName || '',
+              lastName: student.user.lastName || '',
+              email: student.user.email || '',
+              birthDate: student.birthDate.split('T')[0],
+              status: 'active',
+              isActive: true,
+            });
+          } else {
+            console.error('Student data structure is unexpected:', student);
+            showError('Öğrenci verileri beklenmeyen formatta');
+          }
         } catch (error) {
           console.error('Error loading student:', error);
           showError('Öğrenci verileri yüklenirken hata oluştu');
-          navigate('/students');
+          // Hata durumunda otomatik yönlendirme yapmayalım, kullanıcı karar versin
+        } finally {
+          setInitialLoading(false);
         }
       };
       loadStudent();
@@ -115,13 +138,13 @@ const StudentForm: React.FC = () => {
     navigate('/students');
   };
 
-  return (
-    <Box>
+  return (    <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Button
           startIcon={<BackIcon />}
           onClick={handleBack}
           sx={{ mr: 2 }}
+          disabled={loading || initialLoading}
         >
           Geri
         </Button>
@@ -130,14 +153,23 @@ const StudentForm: React.FC = () => {
         </Typography>
       </Box>
 
-      <Card elevation={3}>
-        <CardContent>
-          <form onSubmit={formik.handleSubmit}>
-            {submitError && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {submitError}
-              </Alert>
-            )}            <Grid container spacing={3}>
+      {initialLoading ? (
+        <Card elevation={3}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+              <Typography>Öğrenci verileri yükleniyor...</Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card elevation={3}>
+          <CardContent>
+            <form onSubmit={formik.handleSubmit}>
+              {submitError && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {submitError}
+                </Alert>
+              )}<Grid container spacing={3}>
               {!isEdit && (
                 <>
                   <Grid item xs={12} md={6}>
@@ -216,22 +248,22 @@ const StudentForm: React.FC = () => {
                 <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  id="dateOfBirth"
-                  name="dateOfBirth"
+                  id="birthDate"
+                  name="birthDate"
                   label="Doğum Tarihi"
                   type="date"
-                  value={formik.values.dateOfBirth}
+                  value={formik.values.birthDate}
                   onChange={formik.handleChange}
                   onBlur={(e) => {
                     formik.handleBlur(e);
                     // Tarihin geçerli olduğundan emin ol
                     if (e.target.value && !isNaN(Date.parse(e.target.value))) {
                       // Formik değerini değiştir - bu değer ISO formatında olacak
-                      formik.setFieldValue('dateOfBirth', e.target.value);
+                      formik.setFieldValue('birthDate', e.target.value);
                     }
                   }}
-                  error={formik.touched.dateOfBirth && Boolean(formik.errors.dateOfBirth)}
-                  helperText={formik.touched.dateOfBirth && formik.errors.dateOfBirth}
+                  error={formik.touched.birthDate && Boolean(formik.errors.birthDate)}
+                  helperText={formik.touched.birthDate && formik.errors.birthDate}
                   InputLabelProps={{
                     shrink: true,
                   }}
@@ -284,11 +316,11 @@ const StudentForm: React.FC = () => {
                     {loading ? 'Kaydediliyor...' : isEdit ? 'Güncelle' : 'Kaydet'}
                   </Button>
                 </Box>
-              </Grid>
-            </Grid>
+              </Grid>            </Grid>
           </form>
         </CardContent>
       </Card>
+      )}
     </Box>
   );
 };

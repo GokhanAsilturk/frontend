@@ -5,61 +5,62 @@ import {
   CreateEnrollmentRequest, 
   UpdateEnrollmentRequest,
   EnrollmentFilters,
-  PaginatedEnrollmentsResponse,
-  PaginationParams
+  PaginationParams,
+  ApiResponse,
+  ApiPaginatedResponse
 } from '@/types';
 
 class EnrollmentService {
   async getEnrollments(
     filters?: EnrollmentFilters, 
     pagination?: PaginationParams
-  ): Promise<PaginatedEnrollmentsResponse> {
+  ): Promise<ApiPaginatedResponse<Enrollment>> {
     const params = { ...filters, ...pagination };
-    return apiClient.get<PaginatedEnrollmentsResponse>('/enrollments', { params });
+    return apiClient.get<ApiPaginatedResponse<Enrollment>>('/enrollments', { params });
   }
 
   async getEnrollmentsWithDetails(
     filters?: EnrollmentFilters, 
     pagination?: PaginationParams
-  ): Promise<{ enrollments: EnrollmentWithDetails[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<ApiPaginatedResponse<EnrollmentWithDetails>> {
     const params = { ...filters, ...pagination, includeDetails: true };
-    return apiClient.get('/enrollments', { params });
+    return apiClient.get<ApiPaginatedResponse<EnrollmentWithDetails>>('/enrollments', { params });
   }
 
-  async getEnrollment(id: string): Promise<Enrollment> {
-    return apiClient.get<Enrollment>(`/enrollments/${id}`);
+  async getEnrollment(id: string): Promise<ApiResponse<Enrollment>> {
+    return apiClient.get<ApiResponse<Enrollment>>(`/enrollments/${id}`);
   }
 
-  async createEnrollment(data: CreateEnrollmentRequest): Promise<Enrollment> {
-    return apiClient.post<Enrollment>('/enrollments', data);
+  async createEnrollment(data: CreateEnrollmentRequest): Promise<ApiResponse<Enrollment>> {
+    return apiClient.post<ApiResponse<Enrollment>>('/enrollments', data);
   }
 
-  async updateEnrollment(id: string, data: UpdateEnrollmentRequest): Promise<Enrollment> {
-    return apiClient.put<Enrollment>(`/enrollments/${id}`, data);
+  async updateEnrollment(id: string, data: UpdateEnrollmentRequest): Promise<ApiResponse<Enrollment>> {
+    return apiClient.put<ApiResponse<Enrollment>>(`/enrollments/${id}`, data);
   }
 
   async deleteEnrollment(id: string): Promise<void> {
-    return apiClient.delete(`/enrollments/${id}`);
+    await apiClient.delete(`/enrollments/${id}`);
   }
 
-  async bulkCreateEnrollments(enrollments: CreateEnrollmentRequest[]): Promise<{ success: number; errors: any[] }> {
-    return apiClient.post('/enrollments/bulk-create', { enrollments });
+  async bulkCreateEnrollments(enrollments: CreateEnrollmentRequest[]): Promise<ApiResponse<{ success: number; errors: any[] }>> {
+    return apiClient.post<ApiResponse<{ success: number; errors: any[] }>>('/enrollments/bulk-create', { enrollments });
   }
 
-  async bulkDeleteEnrollments(ids: string[]): Promise<void> {
-    return apiClient.post('/enrollments/bulk-delete', { ids });
+  async bulkDeleteEnrollments(ids: string[]): Promise<ApiResponse<void>> {
+    return apiClient.post<ApiResponse<void>>('/enrollments/bulk-delete', { ids });
   }
 
-  async getStudentEnrollments(studentId: string): Promise<Enrollment[]> {
-    return apiClient.get<Enrollment[]>(`/enrollments/student/${studentId}`);
+  async getStudentEnrollments(studentId: string): Promise<ApiResponse<Enrollment[]>> {
+    return apiClient.get<ApiResponse<Enrollment[]>>(`/enrollments/student/${studentId}`);
   }
 
-  async getCourseEnrollments(courseId: string): Promise<Enrollment[]> {
-    return apiClient.get<Enrollment[]>(`/enrollments/course/${courseId}`);
+  async getCourseEnrollments(courseId: string): Promise<ApiResponse<Enrollment[]>> {
+    return apiClient.get<ApiResponse<Enrollment[]>>(`/enrollments/course/${courseId}`);
   }
 
-  async checkEnrollmentConflict(studentId: string, courseId: string): Promise<{ hasConflict: boolean; message?: string }> {
-    return apiClient.get(`/enrollments/check-conflict`, {
+  async checkEnrollmentConflict(studentId: string, courseId: string): Promise<ApiResponse<{ hasConflict: boolean; message?: string }>> {
+    return apiClient.get<ApiResponse<{ hasConflict: boolean; message?: string }>>(`/enrollments/check-conflict`, {
       params: { studentId, courseId }
     });
   }

@@ -172,12 +172,13 @@ export const DataTable = <T extends Record<string, any>>({
             gap: 1,
             justifyContent: isMobile ? 'center' : 'flex-end',
             width: isMobile ? '100%' : 'auto'
-          }}>
-            {onRefresh && (
+          }}>            {onRefresh && (
               <Tooltip title="Yenile">
-                <IconButton onClick={handleRefresh} disabled={loading}>
-                  <RefreshIcon />
-                </IconButton>
+                <span>
+                  <IconButton onClick={handleRefresh} disabled={loading}>
+                    <RefreshIcon />
+                  </IconButton>
+                </span>
               </Tooltip>
             )}
           </Box>

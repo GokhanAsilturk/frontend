@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, Toolbar } from '@mui/material';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { NotificationSnackbar, ConfirmDialog } from '../common';
+import { useNotification, useConfirmDialog } from '../../hooks';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -9,6 +11,8 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const { notifications, removeNotification } = useNotification();
+  const { dialogState, handleConfirm, handleCancel } = useConfirmDialog();
 
   const handleSidebarToggle = () => {
     setSidebarOpen(!sidebarOpen);
@@ -35,6 +39,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Toolbar /> {/* This creates space for the fixed AppBar */}
         {children}
       </Box>
+
+      {/* Global Dialogs and Notifications */}
+      <NotificationSnackbar
+        notifications={notifications}
+        onClose={removeNotification}
+      />
+      
+      <ConfirmDialog
+        dialogState={dialogState}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </Box>
   );
 };
