@@ -102,6 +102,24 @@ const menuItems: MenuItem[] = [
         label: 'Kayıt Ekle',
         icon: <AssignmentTurnedIn />,
         path: '/enrollments/add',      },
+    ],  },
+  {
+    id: 'admins',
+    label: 'Admin Yönetimi',
+    icon: <AdminPanelSettings />,
+    children: [
+      {
+        id: 'admins-list',
+        label: 'Admin Listesi',
+        icon: <AdminPanelSettings />,
+        path: '/admins',
+      },
+      {
+        id: 'admins-add',
+        label: 'Admin Ekle',
+        icon: <PersonAdd />,
+        path: '/admins/create',
+      },
     ],
   },
   {

@@ -34,13 +34,15 @@ class AuthService {
 
   async forgotPassword(email: string): Promise<ApiResponse<void>> {
     return apiClient.post<ApiResponse<void>>('/auth/forgot-password', { email });
-  }
-
-  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<void>> {
+  }  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<void>> {
     return apiClient.post<ApiResponse<void>>('/auth/reset-password', {
       token,
       newPassword,
     });
+  }
+
+  async updateUserProfile(profileData: { username?: string; email?: string }): Promise<ApiResponse<any>> {
+    return apiClient.put<ApiResponse<any>>('/auth/update-profile', profileData);
   }
 }
 

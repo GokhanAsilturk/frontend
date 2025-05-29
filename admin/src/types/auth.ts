@@ -34,6 +34,7 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
   checkAuthStatus: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => void;
 }
 
 

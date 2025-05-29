@@ -4,6 +4,7 @@ export * from './course';
 export * from './enrollment';
 export type { ApiResponse , ApiPaginatedResponse } from './api';
 export * from './errorLog';
+export * from './admin';
 
 // UI Types
 export interface UIContextType {

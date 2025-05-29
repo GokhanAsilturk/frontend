@@ -68,8 +68,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2" sx={{ mr: 1 }}>
-            {user?.username ?? 'Admin'}
+          <Typography variant="body1" sx={{ mr: 1 }}>
+            {user?.firstName ?? 'Admin'} {user?.lastName ?? ''}
           </Typography>
           <IconButton
             size="large"

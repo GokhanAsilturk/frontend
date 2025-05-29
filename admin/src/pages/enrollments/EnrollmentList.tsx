@@ -33,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { DataTable, DataTableColumn } from '../../components/common/DataTable';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { useNotification, useConfirmDialog } from '../../hooks';
 import { enrollmentService, studentService, courseService } from '../../services';
 import { EnrollmentWithDetails, EnrollmentStatus, EnrollmentFilters, Student, Course } from '../../types';
@@ -60,7 +61,10 @@ const ActionsCell: React.FC<{
     <Tooltip title="Sil">
       <IconButton
         size="small"
-        onClick={() => onDelete(enrollment.id)}
+        onClick={() => {
+          console.log("Sil butonuna tıklandı, ID:", enrollment.id);
+          onDelete(enrollment.id);
+        }}
         color="error"
       >
         <DeleteIcon />
@@ -72,7 +76,12 @@ const ActionsCell: React.FC<{
 export const EnrollmentList: React.FC = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
-  const { confirmDelete } = useConfirmDialog();
+  const { 
+    confirmDelete, 
+    dialogState, 
+    handleConfirm, 
+    handleCancel 
+  } = useConfirmDialog();
   
   const [enrollments, setEnrollments] = useState<EnrollmentWithDetails[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -80,7 +89,7 @@ export const EnrollmentList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<EnrollmentFilters>({});
   
@@ -206,8 +215,8 @@ export const EnrollmentList: React.FC = () => {
       }));
       setPage(0);
     };
-
   const handleDelete = async (id: string) => {
+    console.log("handleDelete çağrıldı, ID:", id);
     confirmDelete(
       'Kayıt',
       async () => {
@@ -602,9 +611,15 @@ export const EnrollmentList: React.FC = () => {
             >
               Düzenle
             </Button>
-          )}
-        </DialogActions>
+          )}        </DialogActions>
       </Dialog>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        dialogState={dialogState}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </Box>
   );
 };

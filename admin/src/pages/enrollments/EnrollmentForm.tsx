@@ -14,7 +14,9 @@ import {
   Chip,
   Stack,
   Avatar,
-  Paper,} from '@mui/material';
+  Paper,
+  CircularProgress
+} from '@mui/material';
 import {
   Save as SaveIcon,
   Cancel as CancelIcon,
@@ -64,12 +66,15 @@ export const EnrollmentForm: React.FC = () => {
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(isEdit);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [conflictWarning, setConflictWarning] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [enrollmentData, setEnrollmentData] = useState<any>(null);
 
   const formik = useFormik<FormValues>({
     initialValues: {
@@ -86,7 +91,9 @@ export const EnrollmentForm: React.FC = () => {
         const submitData = {
           ...values,
           grade: values.grade === '' ? undefined : Number(values.grade)
-        };        if (isEdit && id) {
+        };
+        
+        if (isEdit && id) {
           await enrollmentService.updateEnrollment(id, submitData as UpdateEnrollmentRequest);
           showSuccess('Kayıt başarıyla güncellendi');
           
@@ -103,7 +110,8 @@ export const EnrollmentForm: React.FC = () => {
             navigate(ROUTES.ENROLLMENTS);
           }, 1500);
         }
-      } catch (error: any) {        const message = error?.response?.data?.message ?? 
+      } catch (error: any) {
+        const message = error?.response?.data?.message ?? 
           (isEdit ? 'Kayıt güncellenirken bir hata oluştu' : 'Kayıt oluşturulurken bir hata oluştu');
         showError(message);
       } finally {
@@ -112,63 +120,103 @@ export const EnrollmentForm: React.FC = () => {
     }
   });
 
-  // Fetch enrollment data for edit mode
+  // Önce öğrenci ve kurs verilerini yükle
+  useEffect(() => {
+    const fetchStudentsAndCourses = async () => {
+      try {
+        setLoadingStudents(true);
+        setLoadingCourses(true);
+        
+        const [studentsResponse, coursesResponse] = await Promise.all([
+          studentService.getStudents({ page: 1, limit: 1000 }),
+          courseService.getCourses({}, { page: 1, limit: 1000 })
+        ]);
+        
+        if (studentsResponse.success && Array.isArray(studentsResponse.data)) {
+          setStudents(studentsResponse.data);
+          console.log('Öğrenciler yüklendi:', studentsResponse.data.length);
+        } else {
+          console.error('Öğrenci verilerinde hata:', studentsResponse);
+          setStudents([]);
+        }
+        
+        if (coursesResponse.success && Array.isArray(coursesResponse.data)) {
+          setCourses(coursesResponse.data);
+          console.log('Dersler yüklendi:', coursesResponse.data.length);
+        } else {
+          console.error('Ders verilerinde hata:', coursesResponse);
+          setCourses([]);
+        }
+      } catch (error) {
+        console.error('Öğrenci ve ders bilgileri yükleme hatası:', error);
+        showError('Öğrenci ve ders bilgileri yüklenirken bir hata oluştu');
+        setStudents([]);
+        setCourses([]);
+      } finally {
+        setLoadingStudents(false);
+        setLoadingCourses(false);
+      }
+    };
+
+    fetchStudentsAndCourses();
+  }, [showError]);
+
+  // Sonra, eğer düzenleme modundaysa, kayıt verilerini yükle
   useEffect(() => {
     const fetchEnrollment = async () => {
-      if (!isEdit || !id) return;
+      if (!isEdit || !id) {
+        setInitialLoading(false);
+        return;
+      }
       
       try {
-        setInitialLoading(true);
         const enrollment = (await enrollmentService.getEnrollment(id)).data;
-        formik.setValues({
-          studentId: enrollment.studentId,
-          courseId: enrollment.courseId,
-          status: enrollment.status,
-          grade: enrollment.grade ?? ''
-        });      } catch (error: any) {
+        console.log('Yüklenen kayıt:', enrollment);
+        setEnrollmentData(enrollment);
+      } catch (error: any) {
         console.error('Kayıt yükleme hatası:', error);
         showError('Kayıt bilgileri yüklenirken bir hata oluştu');
         navigate(ROUTES.ENROLLMENTS);
-      } finally {
-        setInitialLoading(false);
       }
     };
 
     fetchEnrollment();
   }, [isEdit, id, navigate, showError]);
-  // Fetch students and courses
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [students, courses] = await Promise.all([
-          (await studentService.getStudents({ page: 1, limit: 1000 })).data,
-          (await courseService.getCourses({}, { page: 1, limit: 1000 })).data
-        ]);
-        
-        if (students && Array.isArray(students)) {
-          setStudents(students);
-        } else {
-          console.error('Beklenmeyen öğrenci API yanıtı:', students);
-          setStudents([]);
-        }
-        
-        if (courses && Array.isArray(courses)) {
-          setCourses(courses);
-        } else {
-          console.error('Beklenmeyen ders API yanıtı:', courses);
-          setCourses([]);
-        }
-      } catch (error: any) {
-        console.error('Veri yükleme hatası:', error);
-        showError('Öğrenci ve ders bilgileri yüklenirken bir hata oluştu');
-        // Hata durumunda boş diziler ayarla
-        setStudents([]);
-        setCourses([]);
-      }
-    };
 
-    fetchData();
-  }, [showError]);
+  // Öğrenci ve kurs verilerinin yüklenmesi tamamlandığında, form değerlerini ayarla
+  useEffect(() => {
+    if (isEdit && enrollmentData && !loadingStudents && !loadingCourses) {
+      console.log('Form değerleri ayarlanıyor...', {
+        studentId: enrollmentData.studentId,
+        courseId: enrollmentData.courseId,
+        studentsLength: students.length,
+        coursesLength: courses.length
+      });
+      
+      // Öğrenci ID'sinin öğrenci listesinde olup olmadığını kontrol et
+      const studentExists = students.some(s => s.id === enrollmentData.studentId);
+      if (!studentExists) {
+        console.warn(`Öğrenci ID'si (${enrollmentData.studentId}) öğrenci listesinde bulunamadı!`);
+      }
+      
+      // Kurs ID'sinin kurs listesinde olup olmadığını kontrol et
+      const courseExists = courses.some(c => c.id === enrollmentData.courseId);
+      if (!courseExists) {
+        console.warn(`Kurs ID'si (${enrollmentData.courseId}) kurs listesinde bulunamadı!`);
+      }
+      
+      formik.setValues({
+        studentId: enrollmentData.studentId,
+        courseId: enrollmentData.courseId,
+        status: enrollmentData.status ?? EnrollmentStatus.PENDING,
+        grade: enrollmentData.grade ?? ''
+      });
+      
+      setInitialLoading(false);
+    } else if (!isEdit && !loadingStudents && !loadingCourses) {
+      setInitialLoading(false);
+    }
+  }, [enrollmentData, loadingStudents, loadingCourses, isEdit, students, courses]);
 
   // Update selected student when studentId changes
   useEffect(() => {
@@ -200,7 +248,8 @@ export const EnrollmentForm: React.FC = () => {
           setConflictWarning(result.data.message ?? 'Bu öğrenci zaten bu derse kayıtlı');
         } else {
           setConflictWarning('');
-        }      } catch (error: any) {
+        }
+      } catch (error: any) {
         // Çakışma kontrolü hatalarını görmezden gel
         console.debug('Kayıt çakışması kontrolü hatası:', error);
       }
@@ -252,8 +301,9 @@ export const EnrollmentForm: React.FC = () => {
 
   if (initialLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-        <Typography>Yükleniyor...</Typography>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh" flexDirection="column" gap={2}>
+        <CircularProgress />
+        <Typography>Veriler yükleniyor...</Typography>
       </Box>
     );
   }
@@ -291,15 +341,18 @@ export const EnrollmentForm: React.FC = () => {
                       fullWidth 
                       error={formik.touched.studentId && Boolean(formik.errors.studentId)}
                     >
-                      <InputLabel>Öğrenci *</InputLabel>                      <Select
+                      <InputLabel>Öğrenci *</InputLabel>
+                      <Select
                         name="studentId"
                         value={formik.values.studentId}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
                         label="Öğrenci *"
-                        disabled={isEdit}
+                        disabled={isEdit || loadingStudents}
                       >
-                        {Array.isArray(students) && students.length > 0 ? (
+                        {loadingStudents ? (
+                          <MenuItem disabled>Öğrenciler yükleniyor...</MenuItem>
+                        ) : students.length > 0 ? (
                           students.map((student) => (
                             <MenuItem key={student.id} value={student.id}>
                               <Box display="flex" alignItems="center" gap={2}>
@@ -318,7 +371,7 @@ export const EnrollmentForm: React.FC = () => {
                             </MenuItem>
                           ))
                         ) : (
-                          <MenuItem disabled>Öğrenci verisi yükleniyor veya bulunamadı</MenuItem>
+                          <MenuItem disabled>Öğrenci verisi bulunamadı</MenuItem>
                         )}
                       </Select>
                       {formik.touched.studentId && formik.errors.studentId && (
@@ -334,15 +387,18 @@ export const EnrollmentForm: React.FC = () => {
                       fullWidth 
                       error={formik.touched.courseId && Boolean(formik.errors.courseId)}
                     >
-                      <InputLabel>Ders *</InputLabel>                      <Select
+                      <InputLabel>Ders *</InputLabel>
+                      <Select
                         name="courseId"
                         value={formik.values.courseId}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
                         label="Ders *"
-                        disabled={isEdit}
+                        disabled={isEdit || loadingCourses}
                       >
-                        {Array.isArray(courses) && courses.length > 0 ? (
+                        {loadingCourses ? (
+                          <MenuItem disabled>Dersler yükleniyor...</MenuItem>
+                        ) : courses.length > 0 ? (
                           courses.map((course) => (
                             <MenuItem key={course.id} value={course.id}>
                               <Box display="flex" alignItems="center" gap={2}>
@@ -361,7 +417,7 @@ export const EnrollmentForm: React.FC = () => {
                             </MenuItem>
                           ))
                         ) : (
-                          <MenuItem disabled>Ders verisi yükleniyor veya bulunamadı</MenuItem>
+                          <MenuItem disabled>Ders verisi bulunamadı</MenuItem>
                         )}
                       </Select>
                       {formik.touched.courseId && formik.errors.courseId && (
@@ -377,7 +433,8 @@ export const EnrollmentForm: React.FC = () => {
                       fullWidth 
                       error={formik.touched.status && Boolean(formik.errors.status)}
                     >
-                      <InputLabel>Durum *</InputLabel>                      <Select
+                      <InputLabel>Durum *</InputLabel>
+                      <Select
                         name="status"
                         value={formik.values.status}
                         onChange={formik.handleChange}
@@ -485,9 +542,11 @@ export const EnrollmentForm: React.FC = () => {
                         <Box>
                           <Typography variant="body2" color="text.secondary">
                             Kredi: {selectedCourse.credits}
-                          </Typography>                          <Typography variant="body2" color="text.secondary">
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
                             Durum: {selectedCourse.isActive ? 'Aktif' : 'Pasif'}
-                          </Typography>                          {selectedCourse.startDate ? (
+                          </Typography>
+                          {selectedCourse.startDate ? (
                             <Typography variant="body2" color="text.secondary">
                               Başlangıç: {formatDate(selectedCourse.startDate)}
                             </Typography>
@@ -502,7 +561,8 @@ export const EnrollmentForm: React.FC = () => {
               {/* Actions */}
               <Card>
                 <Box p={3}>
-                  <Stack spacing={2}>                    <Button
+                  <Stack spacing={2}>
+                    <Button
                       type="submit"
                       variant="contained"
                       fullWidth

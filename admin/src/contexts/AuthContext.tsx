@@ -13,7 +13,8 @@ type AuthAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'LOGIN_SUCCESS'; payload: User }
   | { type: 'LOGOUT' }
-  | { type: 'UPDATE_USER'; payload: User };
+  | { type: 'UPDATE_USER'; payload: User }
+  | { type: 'UPDATE_PROFILE'; payload: Partial<User> };
 
 const initialState: AuthState = {
   user: null,
@@ -43,11 +44,15 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         user: null,
         isAuthenticated: false,
         isLoading: false,
-      };
-    case 'UPDATE_USER':
+      };    case 'UPDATE_USER':
       return {
         ...state,
         user: action.payload,
+      };
+    case 'UPDATE_PROFILE':
+      return {
+        ...state,
+        user: state.user ? { ...state.user, ...action.payload } : null,
       };
     default:
       return state;
@@ -135,6 +140,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatch({ type: 'LOGOUT' });
     }
   }, [dispatch]);
+  const updateProfile = useCallback((updates: Partial<User>): void => {
+    dispatch({ type: 'UPDATE_PROFILE', payload: updates });
+  }, []);
 
   useEffect(() => {
     checkAuthStatus();
@@ -147,7 +155,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     checkAuthStatus,
-  }), [state.user, state.isAuthenticated, state.isLoading, login, logout, checkAuthStatus]);
+    updateProfile,
+  }), [state.user, state.isAuthenticated, state.isLoading, login, logout, checkAuthStatus, updateProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

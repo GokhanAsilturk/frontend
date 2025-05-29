@@ -52,11 +52,11 @@ class EnrollmentService {
   }
 
   async getStudentEnrollments(studentId: string): Promise<ApiResponse<Enrollment[]>> {
-    return apiClient.get<ApiResponse<Enrollment[]>>(`/enrollments/student/${studentId}`);
+    return apiClient.get<ApiResponse<Enrollment[]>>(`/enrollments/students/${studentId}`);
   }
 
   async getCourseEnrollments(courseId: string): Promise<ApiResponse<Enrollment[]>> {
-    return apiClient.get<ApiResponse<Enrollment[]>>(`/enrollments/course/${courseId}`);
+    return apiClient.get<ApiResponse<Enrollment[]>>(`/enrollments/courses/${courseId}`);
   }
 
   async checkEnrollmentConflict(studentId: string, courseId: string): Promise<ApiResponse<{ hasConflict: boolean; message?: string }>> {

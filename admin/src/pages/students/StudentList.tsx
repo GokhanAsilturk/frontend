@@ -57,7 +57,7 @@ const StudentList: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0); // Material-UI TablePagination 0-based indexing kullanır
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -67,7 +67,7 @@ const StudentList: React.FC = () => {
     try {
       setLoading(true);
       const response = await studentService.getStudents({
-        page: page + 1, // Backend 1-based indexing kullanır
+        page: page + 1,
         limit: rowsPerPage,
         search: searchTerm,
       });

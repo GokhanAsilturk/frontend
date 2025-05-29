@@ -9,6 +9,9 @@ import { StudentList, StudentForm } from '../pages/students';
 import { CourseList, CourseForm } from '../pages/courses';
 import { EnrollmentList, EnrollmentForm } from '../pages/enrollments';
 import { Profile } from '../pages/Profile';
+import AdminList from '../pages/admins/AdminList';
+import AdminCreate from '../pages/admins/AdminCreate';
+import AdminEdit from '../pages/admins/AdminEdit';
 import { MainLayout } from '../components/layout';
 import { ROUTES } from '../utils';
 
@@ -131,9 +134,7 @@ export const AppRoutes: React.FC = () => {
             </MainLayout>
           </PrivateRoute>
         } 
-      />
-
-      <Route 
+      />      <Route 
         path="/enrollments/edit/:id" 
         element={
           <PrivateRoute>
@@ -144,8 +145,42 @@ export const AppRoutes: React.FC = () => {
         } 
       />
 
+      {/* Admin Routes */}
       <Route 
-        path={ROUTES.ERROR_LOGS} 
+        path="/admins" 
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <AdminList />
+            </MainLayout>
+          </PrivateRoute>
+        } 
+      />
+
+      <Route 
+        path="/admins/create" 
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <AdminCreate />
+            </MainLayout>
+          </PrivateRoute>
+        } 
+      />
+
+      <Route 
+        path="/admins/:id/edit" 
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <AdminEdit />
+            </MainLayout>
+          </PrivateRoute>
+        } 
+      />
+
+      <Route 
+        path={ROUTES.ERROR_LOGS}
         element={
           <PrivateRoute>
             <MainLayout>
