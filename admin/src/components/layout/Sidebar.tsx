@@ -194,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       open={open}
       onClose={onClose}
       ModalProps={{
-        keepMounted: true, // Better open performance on mobile.
+        keepMounted: true, // Mobil cihazlarda daha iyi açılma performansı.
       }}
       sx={{
         width: 280,

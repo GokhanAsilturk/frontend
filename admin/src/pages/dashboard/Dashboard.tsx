@@ -25,7 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { DashboardStats, RecentActivity } from '../../types';
 
-// Mock data - Bu veriler gerçek API'den gelecek
+// Örnek veri - Bu veriler gerçek API'den gelecek
 const mockStats: DashboardStats = {
   totalStudents: 150,
   totalCourses: 25,

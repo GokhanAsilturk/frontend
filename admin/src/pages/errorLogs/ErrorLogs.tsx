@@ -42,7 +42,7 @@ export const ErrorLogs: React.FC = () => {
   const [selectedError, setSelectedError] = useState<ErrorLog | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
-  const { showError } = useNotification(); // showNotification yerine showError kullanıldı
+  const { showError } = useNotification(); // showError kullanıldı
 
   const fetchErrorLogs = async () => {
     try {
@@ -51,7 +51,7 @@ export const ErrorLogs: React.FC = () => {
       setErrorLogs(response.data);
       setTotalCount(response.pagination.total);
     } catch (error) {
-      showError(getErrorMessage(error)); // showNotification yerine showError kullanıldı
+      showError(getErrorMessage(error)); // showError kullanıldı
     } finally {
       setLoading(false);
     }

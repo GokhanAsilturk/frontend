@@ -44,7 +44,7 @@ export const usePagination = (initialPageSize: number = PAGINATION_CONFIG.DEFAUL
     setPaginationState(prev => ({
       ...prev,
       pageSize,
-      page: 1, // Reset to first page when changing page size
+      page: 1, // Sayfa boyutu değiştiğinde ilk sayfaya dön
     }));
   };
 

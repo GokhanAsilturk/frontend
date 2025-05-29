@@ -96,7 +96,6 @@ const CourseForm: React.FC = () => {
             await courseService.updateCourse(id, updateData);
           showSuccess('Ders başarıyla güncellendi');
           
-          // Başarı mesajı görünsün diye kısa bir bekleme
           setTimeout(() => {
             navigate('/courses');
           }, 1500);
@@ -115,7 +114,6 @@ const CourseForm: React.FC = () => {
           await courseService.createCourse(createData);
           showSuccess('Ders başarıyla oluşturuldu');
           
-          // Başarı mesajı görünsün diye kısa bir bekleme
           setTimeout(() => {
             navigate('/courses');
           }, 1500);
@@ -210,7 +208,7 @@ const CourseForm: React.FC = () => {
                 error={formik.touched.code && Boolean(formik.errors.code)}
                 helperText={formik.touched.code && formik.errors.code}
                 required
-                disabled={isEdit} // Can't change course code in edit mode
+                disabled={isEdit} // Düzenleme modunda ders kodu değiştirilemez
               />
             </Grid>
 

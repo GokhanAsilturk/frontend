@@ -40,7 +40,6 @@ import { EnrollmentWithDetails, EnrollmentStatus, EnrollmentFilters, Student, Co
 import { formatDate, getErrorMessage } from '../../utils';
 import { ROUTES } from '../../utils/constants';
 
-// ActionsCell bileşeni - işlem butonlarını gösterir
 const ActionsCell: React.FC<{
   enrollment: EnrollmentWithDetails;
   onView: (enrollment: EnrollmentWithDetails) => void;
@@ -93,7 +92,6 @@ export const EnrollmentList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<EnrollmentFilters>({});
   
-  // Detail Dialog
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithDetails | null>(null);
 
@@ -105,7 +103,6 @@ export const EnrollmentList: React.FC = () => {
   const fetchEnrollments = useCallback(async () => {
     try {
       setLoading(true);
-      // Normal getEnrollments metodunu kullanıyoruz
       const response = await enrollmentService.getEnrollments(
         {
           ...filters,
@@ -118,7 +115,6 @@ export const EnrollmentList: React.FC = () => {
       );
       
       if (response.success && Array.isArray(response.data)) {
-        // Backend yanıtındaki verileri zenginleştirerek EnrollmentWithDetails'e dönüştürüyoruz
         const enrichedData: EnrollmentWithDetails[] = await Promise.all(
           response.data.map(async enrollment => {
             let studentName = 'Bilinmeyen Öğrenci';
@@ -126,10 +122,8 @@ export const EnrollmentList: React.FC = () => {
             let courseName = enrollment.course?.name || 'Bilinmeyen Ders';
             let courseCode = enrollment.course?.code || '';
             
-            // Öğrenci bilgilerini almak için ek istek yapabiliriz
             if (enrollment.studentId) {
               try {
-                // Öğrenci detaylarını getir
                 const studentResponse = await studentService.getStudent(enrollment.studentId);
                 if (studentResponse.success && studentResponse.data) {
                   const studentData = studentResponse.data;
@@ -223,16 +217,14 @@ export const EnrollmentList: React.FC = () => {
         try {
           console.log("Silme işlemi başlatılıyor:", id);
           
-          // Silme işlemini gerçekleştir ve tamamlanmasını bekle
           await enrollmentService.deleteEnrollment(id);
           
           console.log("Silme işlemi tamamlandı");
           showSuccess('Kayıt başarıyla silindi');
           
-          // Başarılı silme işleminden sonra listeyi yenile
           setTimeout(() => {
             fetchEnrollments();
-          }, 500); // Kısa bir gecikme ekleyerek backend'in işlemi tamamlamasını sağla
+          }, 500); // Backend'in işlemi tamamlaması için kısa bir gecikme ekleniyor
         } catch (error) {
           console.error("Silme işlemi sırasında hata:", error);
           showError(getErrorMessage(error));
@@ -282,7 +274,6 @@ export const EnrollmentList: React.FC = () => {
     setPage(0);
   };
 
-  // Tablo sütunları
   const columns: DataTableColumn<EnrollmentWithDetails>[] = [
     {
       id: 'studentName',
@@ -403,10 +394,8 @@ export const EnrollmentList: React.FC = () => {
     }
   ];
 
-  // Bileşenin UI kısmı...
   return (
     <Box>
-      {/* Başlık ve butonlar */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Kayıt Yönetimi
@@ -429,10 +418,8 @@ export const EnrollmentList: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Filtreler ve Tablo */}
       <Card>
         <Box p={3}>
-          {/* Filtre kısmı */}
           <Grid container spacing={3} mb={3}>
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth size="small">
@@ -504,7 +491,6 @@ export const EnrollmentList: React.FC = () => {
             </Grid>
           </Grid>
           
-          {/* Tablo */}
           <DataTable<EnrollmentWithDetails>
             columns={columns}
             rows={enrollments || []}
@@ -525,7 +511,6 @@ export const EnrollmentList: React.FC = () => {
         </Box>
       </Card>
 
-      {/* Detay Diyaloğu */}
       <Dialog
         open={detailDialogOpen}
         onClose={() => setDetailDialogOpen(false)}
@@ -614,7 +599,6 @@ export const EnrollmentList: React.FC = () => {
           )}        </DialogActions>
       </Dialog>
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         dialogState={dialogState}
         onConfirm={handleConfirm}

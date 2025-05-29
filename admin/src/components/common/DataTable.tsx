@@ -25,7 +25,7 @@ export interface DataTableColumn<T = any> {
   id: string;
   label: string;
   minWidth?: number;
-  width?: string; // width özelliği eklendi
+  width?: string;
   align?: 'right' | 'left' | 'center';
   format?: (value: any, row: T) => React.ReactNode;
 }
@@ -78,7 +78,7 @@ export const DataTable = <T extends Record<string, any>>({
       onRefresh();
     }
   };
-  // Render fonksiyonunu component içinde ekleyin
+
   const renderTableContent = () => {
     if (loading) {
       return (
@@ -89,8 +89,7 @@ export const DataTable = <T extends Record<string, any>>({
         </TableRow>
       );
     }
-    
-    // Veri kontrolü yapılıyor
+
     if (!rows || rows.length === 0) {
       return (
         <TableRow>
@@ -100,26 +99,25 @@ export const DataTable = <T extends Record<string, any>>({
         </TableRow>
       );
     }    
-    // Burada, önceki if kontrolleri geçtiyse, rows dizisi tanımlı ve boş değildir
-    // Ancak yine de güvenlik için kontrol ekleyelim
+
     if (Array.isArray(rows)) {
       return rows.map((row, index) => {
         const rowKey = row?.id ?? row?.key ?? `row-${index}`;
         return (
-          <TableRow hover tabIndex={-1} key={rowKey}>          {Array.isArray(columns) && columns.map((column) => {
-            const value = row ? row[column.id] : undefined;
-            return (
-              <TableCell key={column.id} align={column.align}>
-                {column.format ? column.format(value, row) : value}
-              </TableCell>
-            );
-          })}
+          <TableRow hover tabIndex={-1} key={rowKey}>
+            {Array.isArray(columns) && columns.map((column) => {
+              const value = row ? row[column.id] : undefined;
+              return (
+                <TableCell key={column.id} align={column.align}>
+                  {column.format ? column.format(value, row) : value}
+                </TableCell>
+              );
+            })}
           </TableRow>
         );
       });
     }
     
-    // Eğer rows doğru bir dizi değilse, son bir güvenlik kontrolü
     return (
       <TableRow>
         <TableCell colSpan={columns.length} align="center">
@@ -131,7 +129,6 @@ export const DataTable = <T extends Record<string, any>>({
 
   return (
     <Paper elevation={3}>
-      {/* Search and Actions Bar */}
       {(onSearch || onRefresh) && (        <Box
           sx={{
             p: 2,
@@ -185,7 +182,6 @@ export const DataTable = <T extends Record<string, any>>({
         </Box>
       )}
 
-      {/* Table */}
       <TableContainer sx={{ maxHeight: 600 }}>
         <Table stickyHeader>
           <TableHead>
@@ -210,7 +206,6 @@ export const DataTable = <T extends Record<string, any>>({
         </Table>
       </TableContainer>
 
-      {/* Pagination */}
       <TablePagination
         rowsPerPageOptions={rowsPerPageOptions}
         component="div"

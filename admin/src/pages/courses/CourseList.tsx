@@ -24,7 +24,6 @@ import { DataTable, DataTableColumn } from '../../components/common';
 import { useNotification, useConfirmDialog } from '../../hooks';
 import { formatDate, getErrorMessage } from '../../utils';
 
-// Helper functions for rendering
 const getStatusColor = (isActive: boolean): 'success' | 'default' => {
   if (isActive) return 'success';
   return 'default';
